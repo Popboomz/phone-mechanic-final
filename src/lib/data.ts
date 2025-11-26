@@ -236,7 +236,11 @@ export const getCustomers = async (searchQuery?: string): Promise<Customer[]> =>
 };
 
 export const getDeletedCustomers = async (): Promise<Customer[]> => {
-  const q = query(customersCollection, where('deletedAt', '!=', null));
+  const q = query(
+    customersCollection,
+    where('deletedAt', '>', new Date(0)),
+    orderBy('deletedAt', 'desc')
+  );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(fromFirestore);
 };

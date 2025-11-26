@@ -282,7 +282,7 @@ export const updateCustomer = async (id: string, data: Partial<Omit<Customer, 'i
 export const deleteCustomer = async (id: string): Promise<boolean> => {
     try {
         const docRef = doc(db, 'customers', id);
-        await updateDoc(docRef, { deletedAt: serverTimestamp() });
+        await updateDoc(docRef, { deletedAt: new Date() });
         return true;
     } catch(e) {
         console.error("Error deleting customer: ", e);

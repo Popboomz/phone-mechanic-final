@@ -24,7 +24,7 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
   const gst = totalPrice - subtotal;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div id="invoice-root" className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8">
         <div className="max-w-4xl mx-auto">

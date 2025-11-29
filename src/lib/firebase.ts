@@ -1,17 +1,19 @@
+// src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
+// 🔒 这里直接使用你 .env.local 里的配置值
+// 这些信息本来就是公开的，不是私密密钥，放在前端代码里是安全的。
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY as string,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN as string,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET as string,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID as string,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID as string,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID as string,
+  apiKey: "AIzaSyBH7mv-zy1PLc2Fz8kkujdzkt2yoAb4y",
+  authDomain: "phone-mechanic-final.firebaseapp.com",
+  projectId: "phone-mechanic-final",
+  storageBucket: "phone-mechanic-final.firebasestorage.app",
+  messagingSenderId: "606430764528",
+  appId: "1:606430764528:web:49f723257b9e9960dcb1135",
+  measurementId: "G-VLNHL8CELPX",
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-export { db };
+export const db = getFirestore(app);

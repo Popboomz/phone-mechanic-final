@@ -166,9 +166,11 @@ const fromFirestore = (doc: any): Customer => {
 }
 
 const getAllCustomers = async (): Promise<Customer[]> => {
-    const q = query(customersCollection, where('deletedAt', '==', null));
+    const q = query(customersCollection);
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(fromFirestore);
+    return querySnapshot.docs
+      .map(fromFirestore)
+      .filter((c) => !c.deletedAt);
 }
 
 export const searchCustomers = async (

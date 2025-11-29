@@ -44,12 +44,13 @@ export function CustomerDashboard({
 
   const sortedYears = Object.keys(byYMD).sort((a, b) => parseInt(b) - parseInt(a));
 
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
   const todayYear = todayIso.slice(0, 4);
   const todayMonth = todayIso.slice(0, 7);
   const hasToday = Boolean(groupedCustomers[todayIso]);
-  const defaultYearOpen = hasToday ? todayYear : undefined;
-  const defaultMonthOpen = hasToday ? todayMonth : undefined;
+  const hasMonth = Boolean(byYMD[todayYear] && byYMD[todayYear][todayMonth]);
+  const defaultYearOpen = hasToday || hasMonth ? todayYear : undefined;
+  const defaultMonthOpen = hasToday ? todayMonth : hasMonth ? todayMonth : undefined;
   const defaultDayOpen = hasToday ? todayIso : undefined;
 
   return (
@@ -67,7 +68,7 @@ export function CustomerDashboard({
             const monthsInYear = Object.keys(byYMD[year]).sort(
               (a, b) => new Date(b + '-01').getTime() - new Date(a + '-01').getTime()
             );
-            const monthDefault = hasToday && year === todayYear ? defaultMonthOpen : undefined;
+            const monthDefault = year === todayYear ? defaultMonthOpen : undefined;
             return (
               <AccordionItem value={year} key={year} className="border-none">
                 <AccordionTrigger className="text-lg font-semibold text-foreground bg-muted hover:bg-muted/80 px-4 py-3 rounded-lg data-[state=open]:rounded-b-none">
@@ -79,7 +80,7 @@ export function CustomerDashboard({
                       const datesInMonth = Object.keys(byYMD[year][month]).sort(
                         (a, b) => new Date(b).getTime() - new Date(a).getTime()
                       );
-                      const dayDefault = hasToday && year === todayYear && month === todayMonth ? defaultDayOpen : undefined;
+                      const dayDefault = year === todayYear && month === todayMonth ? defaultDayOpen : undefined;
                       return (
                         <AccordionItem value={month} key={month} className="border-none">
                           <AccordionTrigger className="text-md font-semibold text-foreground bg-muted/70 hover:bg-muted px-4 py-2 rounded-lg data-[state=open]:rounded-b-none">

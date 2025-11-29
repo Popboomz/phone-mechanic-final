@@ -113,8 +113,8 @@ const repairData: RepairItemNode[] = [
 ];
 
 interface RepairItemsSelectorProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[];
+  onChange: (value: string[]) => void;
 }
 
 export const RepairItemsSelector: React.FC<RepairItemsSelectorProps> = ({
@@ -123,9 +123,14 @@ export const RepairItemsSelector: React.FC<RepairItemsSelectorProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
 
-  const handleSelect = (itemId: string) => {
-    onChange(itemId);
+  const addItem = (itemId: string) => {
+    if (value.includes(itemId)) return;
+    onChange([...value, itemId]);
     setOpen(false);
+  };
+
+  const removeItem = (itemId: string) => {
+    onChange(value.filter((id) => id !== itemId));
   };
 
   const renderTree = (nodes: RepairItemNode[]) => {
@@ -136,7 +141,7 @@ export const RepairItemsSelector: React.FC<RepairItemsSelectorProps> = ({
              <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"
-                onClick={() => handleSelect(node.id)}
+                onClick={() => addItem(node.id)}
              >
                 {node.label}
              </Button>
@@ -162,6 +167,7 @@ export const RepairItemsSelector: React.FC<RepairItemsSelectorProps> = ({
 
 
   return (
+    <div className="space-y-2">
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
@@ -170,9 +176,7 @@ export const RepairItemsSelector: React.FC<RepairItemsSelectorProps> = ({
           aria-expanded={open}
           className="w-full justify-between h-auto min-h-10 font-normal"
         >
-          <span className='truncate'>
-            {value ? getFullLabelPathForRepairItem(value) : 'Select a repair item...'}
-          </span>
+          <span className='truncate'>Select repair items...</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -184,5 +188,30 @@ export const RepairItemsSelector: React.FC<RepairItemsSelectorProps> = ({
         </ScrollArea>
       </PopoverContent>
     </Popover>
+    
+    {React.createElement(
+      'div',
+      { className: 'mt-2 flex flex-wrap gap-2' },
+      value.map((id) => {
+        const label = id.startsWith('custom:') ? id.slice(7) : getFullLabelPathForRepairItem(id);
+        return React.createElement(
+          Button,
+          { key: id, variant: 'secondary', className: 'h-6 px-2 py-0 text-xs' },
+          label,
+          React.createElement(
+            'span',
+            {
+              className: 'ml-2 cursor-pointer',
+              onClick: (e) => {
+                e.stopPropagation();
+                removeItem(id);
+              },
+            },
+            '✖'
+          )
+        );
+      })
+    )}
+    </div>
   );
 };

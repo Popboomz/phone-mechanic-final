@@ -1,18 +1,16 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Your Web App Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBH7mv-Zy1PL2cFZ8kkujdzktZJyoAb4Y",
-  authDomain: "phone-mechanic-final.firebaseapp.com",
-  projectId: "phone-mechanic-final",
-  storageBucket: "phone-mechanic-final.firebasestorage.app",
-  messagingSenderId: "606430764528",
-  appId: "1:606430764528:web:49f72357b909960dcbb1135",
-  measurementId: "G-VLNHL8CELPX"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY as string,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN as string,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET as string,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID as string,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID as string,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID as string,
 };
 
-// Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 

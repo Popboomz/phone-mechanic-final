@@ -2,15 +2,9 @@ import { Header } from "@/components/header";
 import { getCustomers } from "@/lib/data";
 import { CustomerDashboard } from "@/components/customer-dashboard";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams?: {
-    query?: string;
-  };
-}) {
-  const query = searchParams?.query || "";
-  const customers = await getCustomers(query);
+export default async function Home() {
+  const customers = await getCustomers("");
+  const query = "";
 
   return (
     <div className="flex flex-col min-h-screen bg-background">

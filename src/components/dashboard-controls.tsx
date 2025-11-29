@@ -2,18 +2,20 @@
 "use client";
 
 import Link from "next/link";
-import { Search, PlusCircle, Loader2 } from "lucide-react";
+import { Search, PlusCircle, Loader2, Calendar, Wrench } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useRef } from 'react';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Customer } from "@/lib/types";
 import { getCustomerSuggestions } from "@/lib/actions";
+import { getFullLabelPathForRepairItem } from "@/lib/data";
+import { formatAUDate } from "@/lib/utils";
 import { Card, CardContent } from "./ui/card";
 import { Phone } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
-type Suggestion = Pick<Customer, 'id' | 'customerName' | 'phoneModel'>;
+type Suggestion = Pick<Customer, 'id' | 'customerName' | 'phoneModel' | 'transactionDate' | 'repairItems'>;
 
 export function DashboardControls({ query: initialQuery }: { query: string }) {
   const [query, setQuery] = useState(initialQuery);
@@ -95,11 +97,19 @@ export function DashboardControls({ query: initialQuery }: { query: string }) {
                 <ul className="space-y-1">
                   {suggestions.map(customer => (
                     <li key={customer.id}>
-                       <Link href={`/${customer.id}`} className="block">
+                      <Link href={`/${customer.id}`} className="block">
                         <Button variant="ghost" className="w-full h-auto justify-start items-start text-left p-2">
-                          <div>
+                          <div className="space-y-1">
                             <p className="font-semibold">{customer.customerName}</p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="w-3 h-3"/>{customer.phoneModel}</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                              <Phone className="w-3 h-3"/>{customer.phoneModel}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                              <Calendar className="w-3 h-3"/>{formatAUDate(customer.transactionDate)}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                              <Wrench className="w-3 h-3"/>{(customer.repairItems || []).map(id => id.startsWith('custom:') ? id.slice(7) : getFullLabelPathForRepairItem(id)).join('; ')}
+                            </p>
                           </div>
                         </Button>
                       </Link>

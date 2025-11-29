@@ -23,6 +23,7 @@ exports.autoArchiveOldInvoices = functions.pubsub
 
     // 直接用 Date 对象，Firestore SDK 会自动转换成 Timestamp
     const oldInvoices = await customersRef
+      .where("deletedAt", "==", null)
       .where("transactionDate", "<", sixMonthsAgo)
       .get();
 

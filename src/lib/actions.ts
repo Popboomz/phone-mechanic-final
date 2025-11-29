@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -21,6 +20,10 @@ const FormSchema = z.object({
   customerName: z
     .string({ invalid_type_error: 'Please enter a customer name.'})
     .min(2, 'Customer name must be at least 2 characters.'),
+
+  // ✅ 新增：phoneNumber（可选）
+  phoneNumber: z.string().max(20).optional(),
+
   phoneModel: z.string().min(2, 'Phone model is required.'),
   phoneImei: z.string().max(15, "IMEI cannot be more than 15 digits.").optional(),
   phonePrice: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -29,48 +32,56 @@ const FormSchema = z.object({
   phoneStorage: z.string().optional(),
   // Receive date as a 'YYYY-MM-DD' string
   transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format."),
-  repairItem: z.string().min(1, 'Please select a repair item.'),
+  repairItems: z.array(z.string()).min(1, 'Please select at least one repair item.'),
+  policyType: z.enum(['standard','water','mainboard','sale','custom']).optional(),
+  policyText: z.string().optional(),
   warrantyPeriod: z.coerce.number().int().min(0, "Warranty period cannot be negative."),
   notes: z.string().optional(),
 });
 
 // Helper function to process uploaded files into base64 data URIs
 async function getBase64(file: File): Promise<string> {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return `data:${file.type};base64,${buffer.toString('base64')}`;
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  return `data:${file.type};base64,${buffer.toString('base64')}`;
 }
 
 const processAndValidateForm = (formData: FormData) => {
-    const rawFormData = {
-        customerName: formData.get('customerName'),
-        phoneModel: formData.get('phoneModel'),
-        phoneImei: formData.get('phoneImei'),
-        phonePrice: formData.get('phonePrice'),
-        phoneStorage: formData.get('phoneStorage'),
-        transactionDate: formData.get('transactionDate'),
-        repairItem: formData.get('repairItem'),
-        warrantyPeriod: formData.get('warrantyPeriod'),
-        notes: formData.get('notes'),
-    };
+  const rawFormData = {
+    customerName: formData.get('customerName'),
+    // ✅ 新增：从 formData 取出 phoneNumber
+    phoneNumber: formData.get('phoneNumber'),
+    phoneModel: formData.get('phoneModel'),
+    phoneImei: formData.get('phoneImei'),
+    phonePrice: formData.get('phonePrice'),
+    phoneStorage: formData.get('phoneStorage'),
+    transactionDate: formData.get('transactionDate'),
+    repairItems: JSON.parse(String(formData.get('repairItems') || '[]')),
+    policyType: formData.get('policyType') || undefined,
+    policyText: String(formData.get('policyText') ?? ''),
+    warrantyPeriod: formData.get('warrantyPeriod'),
+    notes: formData.get('notes'),
+  };
 
-    const validatedFields = FormSchema.safeParse(rawFormData);
-    if (!validatedFields.success) {
-        return { success: false, errors: validatedFields.error.flatten().fieldErrors, data: null };
-    }
-    
-    // Convert the 'YYYY-MM-DD' string to a Date object at UTC noon
-    const dateString = validatedFields.data.transactionDate;
-    const transactionDate = new Date(`${dateString}T12:00:00Z`);
+  const validatedFields = FormSchema.safeParse(rawFormData);
+  if (!validatedFields.success) {
+    return { success: false, errors: validatedFields.error.flatten().fieldErrors, data: null };
+  }
+  
+  // Convert the 'YYYY-MM-DD' string to a Date object at UTC noon
+  const dateString = validatedFields.data.transactionDate;
+  const transactionDate = new Date(`${dateString}T12:00:00Z`);
 
-    return { 
-        success: true, 
-        errors: null, 
-        data: {
-            ...validatedFields.data,
-            transactionDate,
-        }
-    };
+  const normalized = {
+    ...validatedFields.data,
+    transactionDate,
+    policyText:
+      validatedFields.data.policyType === 'custom'
+        ? (validatedFields.data.policyText ?? '')
+        : '',
+  };
+
+  return { success: true, errors: null, data: normalized };
 };
 
 export async function createCustomer(formData: FormData) {
@@ -81,7 +92,7 @@ export async function createCustomer(formData: FormData) {
   if (imageFiles.length > 0 && imageFiles[0].size > 0) {
     try {
       uploadedImageUrls = await Promise.all(
-          imageFiles.filter((file) => file.size > 0).map((file) => getBase64(file))
+        imageFiles.filter((file) => file.size > 0).map((file) => getBase64(file))
       );
     } catch (error) {
       return { 
@@ -107,7 +118,7 @@ export async function createCustomer(formData: FormData) {
       images: uploadedImageUrls,
     } as Omit<Customer, 'id' | 'deletedAt'>);
   } catch (error) {
-     const errorMessage = error instanceof Error ? error.message : 'Unknown database error.';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown database error.';
     return { 
       message: `Database Error: Failed to Create Customer. ${errorMessage}` 
     };
@@ -125,7 +136,7 @@ export async function updateCustomerAction(id: string, formData: FormData) {
     [];
 
   let uploadedImageUrls: string[] = [];
-   if (imageFiles.length > 0 && imageFiles[0].size > 0) {
+  if (imageFiles.length > 0 && imageFiles[0].size > 0) {
     try {
       uploadedImageUrls = await Promise.all(
         imageFiles.filter((file) => file.size > 0).map((file) => getBase64(file))
@@ -150,7 +161,10 @@ export async function updateCustomerAction(id: string, formData: FormData) {
   }
 
   try {
-    await updateCustomer(id, { ...validationResult.data!, images: allImages });
+    await updateCustomer(id, { 
+      ...validationResult.data!, 
+      images: allImages,
+    });
   } catch (error) {
     return { message: 'Database Error: Failed to Update Customer.' };
   }
@@ -174,34 +188,51 @@ export async function deleteCustomerAction(id: string) {
 }
 
 export async function restoreCustomerAction(id: string) {
-    try {
-        await restoreCustomer(id);
-        revalidatePath('/');
-        revalidatePath('/trash');
-        return { message: 'Restored Customer.' };
-    } catch (error) {
-        return { message: 'Database Error: Failed to Restore Customer.' };
-    }
+  try {
+    await restoreCustomer(id);
+    revalidatePath('/');
+    revalidatePath('/trash');
+    return { message: 'Restored Customer.' };
+  } catch (error) {
+    return { message: 'Database Error: Failed to Restore Customer.' };
+  }
 }
 
 export async function permanentlyDeleteCustomerAction(id: string) {
-    try {
-        await permanentlyDeleteCustomer(id);
-        revalidatePath('/trash');
-        return { message: 'Permanently Deleted Customer.' };
-    } catch (error) {
-        return { message: 'Database Error: Failed to Permanently Delete Customer.' };
-    }
+  try {
+    await permanentlyDeleteCustomer(id);
+    revalidatePath('/trash');
+    return { message: 'Permanently Deleted Customer.' };
+  } catch (error) {
+    return { message: 'Database Error: Failed to Permanently Delete Customer.' };
+  }
 }
 
-export async function getCustomerSuggestions(query: string): Promise<Pick<Customer, 'id' | 'customerName' | 'phoneModel'>[]> {
-  if (query.length < 2) {
+// 👉 暂时保持只返回 id / customerName / phoneModel
+// 如果将来希望在搜索建议里也显示 phoneNumber，可以把类型里加上 'phoneNumber'
+export async function getCustomerSuggestions(
+  query: string
+): Promise<
+  Array<
+    Pick<
+      Customer,
+      'id' | 'customerName' | 'phoneModel' | 'phoneNumber' | 'transactionDate' | 'repairItems'
+    >
+  >
+> {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) {
     return [];
   }
-  const customers = await searchCustomers(query, 5);
-  return customers.map(c => ({
+
+  const customers = await searchCustomers(trimmed, 5);
+
+  return customers.map((c) => ({
     id: c.id,
     customerName: c.customerName,
     phoneModel: c.phoneModel,
+    phoneNumber: c.phoneNumber,
+    transactionDate: c.transactionDate,
+    repairItems: c.repairItems,
   }));
 }

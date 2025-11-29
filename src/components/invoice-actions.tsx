@@ -5,7 +5,7 @@ import { useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
-import { Printer, Share2, Loader2 } from "lucide-react";
+import { Printer, Share2, Loader2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Customer } from "@/lib/types";
 
@@ -28,9 +28,9 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
 
         try {
             const canvas = await html2canvas(invoiceElement, {
-                scale: 2, // Higher scale for better quality
+                scale: 2,
                 useCORS: true,
-                backgroundColor: '#ffffff', // Force a white background for consistency
+                backgroundColor: '#ffffff',
             });
             
             const imgData = canvas.toDataURL('image/png');
@@ -65,19 +65,15 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
             pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
             const pdfBlob = pdf.output('blob');
             const pdfFile = new File([pdfBlob], `Invoice-${customer.customerName}.pdf`, { type: 'application/pdf' });
-            
-            if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
                 await navigator.share({
                     title: `Invoice for ${customer.customerName}`,
                     text: `Here is the invoice for ${customer.phoneModel}.`,
                     files: [pdfFile],
                 });
             } else {
-                toast({
-                    variant: "destructive",
-                    title: "Feature Not Supported",
-                    description: "Your browser does not support sharing files. You can print the invoice instead.",
-                });
+                pdf.save(`Invoice-${customer.customerName}.pdf`);
+                toast({ title: '已下载', description: '浏览器不支持分享，已自动下载 PDF。' });
             }
         } catch (error) {
             console.error("Error generating or sharing PDF: ", error);
@@ -91,8 +87,35 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
         }
     };
 
+    const handleDownload = async () => {
+        const invoiceElement = document.getElementById('printable-area');
+        if (!invoiceElement) return;
+        const canvas = await html2canvas(invoiceElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: 'a4' });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const ar = canvas.width / canvas.height;
+        let w, h;
+        if (ar > pdfWidth / pdfHeight) { w = pdfWidth; h = pdfWidth / ar; } else { h = pdfHeight; w = pdfHeight * ar; }
+        const x = (pdfWidth - w) / 2;
+        const y = (pdfHeight - h) / 2;
+        pdf.addImage(imgData, 'PNG', x, y, w, h);
+        pdf.save(`Invoice-${customer.customerName}.pdf`);
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
   return (
     <div className="flex items-center gap-2">
+      <Button onClick={handleDownload} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Download className="mr-2 h-4 w-4" /> Download
+      </Button>
+      <Button onClick={handlePrint} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Printer className="mr-2 h-4 w-4" /> Print
+      </Button>
       <Button onClick={handleShare} className="bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSharing}>
         {isSharing ? (
             <>

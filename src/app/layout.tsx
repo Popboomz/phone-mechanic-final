@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PT_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import AuthInit from "@/components/auth-init";
 
 const ptSans = PT_Sans({
   subsets: ["latin"],
@@ -23,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-body antialiased ${ptSans.variable}`}>
+        <AuthInit />
         {children}
         <Toaster />
       </body>

@@ -71,11 +71,11 @@ export function CustomerDashboard({
             const monthDefault = year === todayYear ? defaultMonthOpen : undefined;
             return (
               <AccordionItem value={year} key={year} className="border-none">
-                <AccordionTrigger className="text-lg font-semibold text-foreground bg-muted hover:bg-muted/80 px-4 py-3 rounded-lg data-[state=open]:rounded-b-none">
+                <AccordionTrigger className="text-lg font-semibold text-foreground bg-muted hover:bg-muted/80 px-2 py-2 rounded-lg data-[state=open]:rounded-b-none">
                   {year}
                 </AccordionTrigger>
-                <AccordionContent className="p-4 border border-t-0 rounded-b-lg bg-card">
-                  <Accordion type="single" collapsible defaultValue={monthDefault} className="space-y-4">
+                <AccordionContent className="p-2">
+                  <Accordion type="single" collapsible defaultValue={monthDefault} className="space-y-2">
                     {monthsInYear.map((month) => {
                       const datesInMonth = Object.keys(byYMD[year][month]).sort(
                         (a, b) => new Date(b).getTime() - new Date(a).getTime()
@@ -83,21 +83,21 @@ export function CustomerDashboard({
                       const dayDefault = year === todayYear && month === todayMonth ? defaultDayOpen : undefined;
                       return (
                         <AccordionItem value={month} key={month} className="border-none">
-                          <AccordionTrigger className="text-md font-semibold text-foreground bg-muted/70 hover:bg-muted px-4 py-2 rounded-lg data-[state=open]:rounded-b-none">
+                          <AccordionTrigger className="text-md font-semibold text-foreground bg-muted/70 hover:bg-muted px-2 py-2 rounded-lg data-[state=open]:rounded-b-none">
                             {new Date(month + '-01T00:00:00Z').toLocaleDateString('en-US', {
                               month: 'long',
                               timeZone: 'UTC',
                             })}
                           </AccordionTrigger>
-                          <AccordionContent className="p-4 border border-t-0 rounded-b-lg bg-card">
-                            <Accordion type="single" collapsible defaultValue={dayDefault} className="space-y-3">
+                          <AccordionContent className="p-2">
+                            <Accordion type="single" collapsible defaultValue={dayDefault} className="space-y-2">
                               {datesInMonth.map((date) => (
                                 <AccordionItem value={date} key={date} className="border-none">
-                                  <AccordionTrigger className="text-sm font-semibold text-foreground bg-muted/60 hover:bg-muted px-4 py-2 rounded-lg data-[state=open]:rounded-b-none">
+                                  <AccordionTrigger className="text-sm font-semibold text-foreground bg-muted/60 hover:bg-muted px-2 py-2 rounded-lg data-[state=open]:rounded-b-none">
                                     {formatOrdinalDay(Number(date.slice(8, 10)))}
                                   </AccordionTrigger>
-                                  <AccordionContent className="p-4 border border-t-0 rounded-b-lg bg-card">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                  <AccordionContent className="p-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-2">
                                       {byYMD[year][month][date].map((customer) => (
                                         <CustomerCard key={customer.id} customer={customer} />
                                       ))}

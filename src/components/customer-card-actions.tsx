@@ -85,12 +85,44 @@ export function CustomerCardActions({ customer, isFooter = false }: { customer: 
   }
 
   return (
-    <div className="flex items-center">
-        <Link href={`/${customer.id}/edit`}>
-            <Button variant="ghost" size="icon">
-                <Pencil className="w-4 h-4" />
-            </Button>
-        </Link>
+    <div className="flex items-center gap-1">
+      <Link href={`/${customer.id}/edit`}>
+        <Button variant="ghost" size="icon" onClick={stopPropagation}>
+          <Pencil className="w-4 h-4" />
+        </Button>
+      </Link>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon" onClick={stopPropagation}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this customer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This moves {customer.customerName} to Trash. You can restore later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Moving...
+                </>
+              ) : (
+                "Move to Trash"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

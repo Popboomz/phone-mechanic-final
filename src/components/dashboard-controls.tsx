@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, PlusCircle, Loader2, Calendar, Wrench } from "lucide-react";
+import { Search, PlusCircle, Loader2, Calendar, Wrench, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useRef } from 'react';
@@ -15,7 +15,7 @@ import { Card, CardContent } from "./ui/card";
 import { Phone } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
-type Suggestion = Pick<Customer, 'id' | 'customerName' | 'phoneModel' | 'transactionDate' | 'repairItems'>;
+type Suggestion = Pick<Customer, 'id' | 'customerName' | 'phoneModel' | 'transactionDate' | 'repairItems' | 'customerType' | 'phonePrice' | 'devices' | 'repairLineItems'>;
 
 export function DashboardControls({ query: initialQuery }: { query: string }) {
   const [query, setQuery] = useState(initialQuery);
@@ -103,13 +103,32 @@ export function DashboardControls({ query: initialQuery }: { query: string }) {
                             <p className="font-semibold">{customer.customerName}</p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                               <Phone className="w-3 h-3"/>{customer.phoneModel}
+                              {customer.customerType !== 'sales' && (() => {
+                                const repairTotal = Array.isArray(customer.repairLineItems) && customer.repairLineItems.length > 0
+                                  ? customer.repairLineItems.reduce((sum, li) => sum + (parseFloat(String(li.price)) || 0), 0)
+                                  : (parseFloat(customer.phonePrice as any) || 0);
+                                return repairTotal > 0 ? <span className="ml-1">• ${repairTotal.toFixed(2)}</span> : null;
+                              })()}
                             </p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                               <Calendar className="w-3 h-3"/>{formatAUDate(customer.transactionDate)}
                             </p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                              <Wrench className="w-3 h-3"/>{(customer.repairItems || []).map(id => id.startsWith('custom:') ? id.slice(7) : getFullLabelPathForRepairItem(id)).join('; ')}
-                            </p>
+                            {customer.customerType === 'sales' ? (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <DollarSign className="w-3 h-3"/>
+                                {(() => {
+                                  const total = Array.isArray(customer.devices) && customer.devices.length > 0
+                                    ? customer.devices.reduce((sum, d) => sum + (parseFloat(d.price as any) || 0), 0)
+                                    : parseFloat(customer.phonePrice as any) || 0;
+                                  return `Sale • $${total.toFixed(2)}`;
+                                })()}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <Wrench className="w-3 h-3"/>
+                                {(customer.repairItems || []).map(id => id.startsWith('custom:') ? id.slice(7) : getFullLabelPathForRepairItem(id)).join('; ')}
+                              </p>
+                            )}
                           </div>
                         </Button>
                       </Link>

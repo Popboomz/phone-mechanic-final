@@ -56,7 +56,18 @@ export function CustomerCard({ customer }: { customer: Customer }) {
           {/* 右侧：价钱 + 操作 */}
           <div className="flex items-center gap-1">
             <Badge variant="secondary" className="font-mono text-xs text-white">
-              ${Array.isArray(customer.devices) && customer.devices.length > 0 ? customer.devices.reduce((sum, d) => sum + (parseFloat(d.price) || 0), 0).toFixed(2) : customer.phonePrice}
+              {(() => {
+                if (customer.customerType === 'sales') {
+                  const total = Array.isArray(customer.devices) && customer.devices.length > 0
+                    ? customer.devices.reduce((sum, d) => sum + (parseFloat(d.price) || 0), 0)
+                    : parseFloat(customer.phonePrice || '0') || 0;
+                  return `$${total.toFixed(2)}`;
+                }
+                const repairTotal = Array.isArray(customer.repairLineItems) && customer.repairLineItems.length > 0
+                  ? customer.repairLineItems.reduce((sum, li) => sum + (parseFloat(String(li.price)) || 0), 0)
+                  : parseFloat(customer.phonePrice || '0') || 0;
+                return `$${repairTotal.toFixed(2)}`;
+              })()}
             </Badge>
             <CustomerCardActions customer={customer} />
           </div>

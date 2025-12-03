@@ -10,6 +10,7 @@ import {
   restoreCustomer,
   permanentlyDeleteCustomer,
   searchCustomers,
+  getNextInvoiceNumber,
 } from './data';
 import type { Customer } from './types';
 
@@ -118,7 +119,7 @@ const processAndValidateForm = (formData: FormData) => {
         : '',
     repairLineItems: (validatedFields.data.repairLineItems || [])
       .map((li) => ({ name: li.name, price: typeof li.price === 'string' ? parseFloat(li.price) : li.price }))
-      .filter((li) => li.name && !isNaN(li.price as number)),
+      .filter((li) => li.name && !isNaN(li.price as number) && (li.price as number) > 0),
   };
 
   return { success: true, errors: null, data: normalized };
@@ -153,8 +154,10 @@ export async function createCustomer(formData: FormData) {
 
   // If validation is successful, proceed to add to the database
   try {
+    const invoiceNumber = await getNextInvoiceNumber(validationResult.data!.transactionDate);
     await addCustomer({
       ...validationResult.data!,
+      invoiceNumber,
       images: uploadedImageUrls,
     } as Omit<Customer, 'id' | 'deletedAt'>);
   } catch (error) {
@@ -256,7 +259,7 @@ export async function getCustomerSuggestions(
   Array<
     Pick<
       Customer,
-      'id' | 'customerName' | 'phoneModel' | 'phoneNumber' | 'transactionDate' | 'repairItems'
+      'id' | 'customerName' | 'phoneModel' | 'phoneNumber' | 'transactionDate' | 'repairItems' | 'customerType' | 'phonePrice' | 'devices' | 'repairLineItems'
     >
   >
 > {
@@ -274,5 +277,9 @@ export async function getCustomerSuggestions(
     phoneNumber: c.phoneNumber,
     transactionDate: c.transactionDate,
     repairItems: c.repairItems,
+    customerType: c.customerType,
+    phonePrice: c.phonePrice,
+    devices: c.devices,
+    repairLineItems: c.repairLineItems,
   }));
 }

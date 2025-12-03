@@ -15,6 +15,8 @@ import {
   serverTimestamp,
   orderBy,
   limit,
+  runTransaction,
+  setDoc,
 } from 'firebase/firestore';
 
 interface RepairItemNode {
@@ -135,6 +137,7 @@ export const getFullLabelPathForRepairItem = (id: string): string => {
 
 const customersCollection = collection(db, 'customers');
 const phoneModelsCollection = collection(db, 'phoneModels');
+const invoiceCountersCollection = collection(db, 'invoiceCounters');
 
 const cleanUndefined = (obj: any) => {
   const out: any = {};
@@ -167,6 +170,7 @@ const fromFirestore = (doc: any): Customer => {
         repairLineItems: Array.isArray(data.repairLineItems)
           ? data.repairLineItems.map((li: any) => ({ name: String(li?.name || ''), price: Number(li?.price || 0) }))
           : undefined,
+        invoiceNumber: data.invoiceNumber || undefined,
     };
 }
 
@@ -449,4 +453,23 @@ export const updatePhoneModel = async (
 export const deletePhoneModel = async (id: string): Promise<void> => {
   const ref = doc(db, 'phoneModels', id);
   await deleteDoc(ref);
+};
+export const getNextInvoiceNumber = async (date: Date): Promise<string> => {
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const key = `${yyyy}${mm}${dd}`;
+  const counterDoc = doc(db, 'invoiceCounters', key);
+  const seq = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(counterDoc);
+    if (!snap.exists()) {
+      tx.set(counterDoc, { seq: 1, updatedAt: serverTimestamp() });
+      return 1;
+    }
+    const current = Number((snap.data() as any)?.seq || 0);
+    const next = current + 1;
+    tx.update(counterDoc, { seq: next, updatedAt: serverTimestamp() });
+    return next;
+  });
+  return `${key}-${String(seq).padStart(3, '0')}`;
 };

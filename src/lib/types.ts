@@ -28,6 +28,7 @@ export type Customer = {
   deletedAt: Date | null; // Changed from optional to nullable
   notes?: string;
   repairLineItems?: Array<{ name: string; price: number }>;
+  invoiceNumber?: string;
 };
 
 export type PhoneModelDoc = {

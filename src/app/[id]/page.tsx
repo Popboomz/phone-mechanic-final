@@ -16,14 +16,13 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
   }
 
   const transactionDate = new Date(customer.transactionDate);
-  const invoiceNumber = `${transactionDate.getFullYear()}${String(
+  const invoiceNumber = customer.invoiceNumber || `${transactionDate.getFullYear()}${String(
     transactionDate.getMonth() + 1
-  ).padStart(2, "0")}-${String(transactionDate.getMinutes()).padStart(2, "0")}${String(
-    transactionDate.getSeconds()
-  ).padStart(2, "0")}`;
+  ).padStart(2, "0")}${String(transactionDate.getDate()).padStart(2, "0")}-000`;
 
   const devices = Array.isArray(customer.devices) ? customer.devices : [];
-  const repairLines = Array.isArray(customer.repairLineItems) ? customer.repairLineItems : [];
+  const repairLinesAll = Array.isArray(customer.repairLineItems) ? customer.repairLineItems : [];
+  const repairLines = repairLinesAll.filter((li) => (parseFloat(String(li.price)) || 0) > 0);
   const deviceTotal = devices.length > 0 ? devices.reduce((sum, d) => sum + (parseFloat(d.price) || 0), 0) : 0;
   const repairTotal = repairLines.length > 0 ? repairLines.reduce((sum, li) => sum + (parseFloat(String(li.price)) || 0), 0) : 0;
   const baseTotal = (devices.length > 0 || repairLines.length > 0)

@@ -49,11 +49,7 @@ const FormSchema = z.object({
     .max(15, "IMEI cannot be more than 15 digits.")
     .optional()
     .or(z.literal("")),
-  phonePrice: z
-    .string()
-    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
-      message: "Price must be a valid positive number.",
-    }),
+  phonePrice: z.string().optional(),
   phoneStorage: z.string().optional(),
   transactionDate: z.date({
     required_error: "A transaction date is required.",
@@ -63,6 +59,18 @@ const FormSchema = z.object({
   customerType: z.enum(["repair","sales"]).default("repair"),
   warrantyPeriod: z.number().int().min(0, "Warranty period cannot be negative."),
   notes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const val = data.phonePrice ?? "";
+  const num = parseFloat(val);
+  if (data.customerType === "sales") {
+    if (isNaN(num) || num <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["phonePrice"], message: "Price must be a valid positive number for sales." });
+    }
+  } else {
+    if (val && (isNaN(num) || num < 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["phonePrice"], message: "Price must be a valid number." });
+    }
+  }
 });
 
 type FormValues = z.infer<typeof FormSchema>;
@@ -196,7 +204,8 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         ? currentItems.map((id) => id.startsWith("custom:") ? id.slice(7) : getFullLabelPathForRepairItem(id)).join("; ")
         : "Repair";
       const priceStr = (repairPrice || data.phonePrice || "").trim();
-      if (name && priceStr) {
+      const amount = parseFloat(priceStr);
+      if (name && !isNaN(amount) && amount > 0) {
         lines.push({ name, price: priceStr });
       }
       if (lines.length > 0) {
@@ -564,12 +573,13 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
                     if (idx >= 0) nextItems.splice(idx, 1);
                     if (!nextItems.includes(cid)) nextItems.push(cid);
                   }
-                  const name = nextItems.length > 0
-                    ? nextItems.map((id) => id.startsWith("custom:") ? id.slice(7) : getFullLabelPathForRepairItem(id)).join("; ")
-                    : "Repair";
-                  const price = (repairPrice || form.getValues("phonePrice") || "").trim();
-                  if (!price) return;
-                  setSavedRepairs((prev)=>[...prev, { name, price }]);
+              const name = nextItems.length > 0
+                ? nextItems.map((id) => id.startsWith("custom:") ? id.slice(7) : getFullLabelPathForRepairItem(id)).join("; ")
+                : "Repair";
+              const price = (repairPrice || form.getValues("phonePrice") || "").trim();
+              const amount = parseFloat(price);
+              if (isNaN(amount) || amount <= 0) return;
+              setSavedRepairs((prev)=>[...prev, { name, price }]);
                   // 清空与本次维修相关字段
                   form.setValue("repairItems", [], { shouldValidate: true });
                   form.setValue("repairCustomText", "");

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu, PencilRuler, Home, Trash2 } from 'lucide-react';
 import { getDeletedCustomers } from '@/lib/data';
@@ -50,6 +50,7 @@ export async function Header() {
             </SheetTrigger>
             <SheetContent side="right">
                 <SheetHeader className="text-left mb-8">
+                    <SheetTitle className="sr-only">Navigation</SheetTitle>
                     <Link href="/" className="flex items-center space-x-2">
                         <PencilRuler className="h-6 w-6 text-accent" />
                         <span className="font-bold font-headline text-lg uppercase">

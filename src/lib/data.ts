@@ -134,6 +134,7 @@ export const getFullLabelPathForRepairItem = (id: string): string => {
 
 
 const customersCollection = collection(db, 'customers');
+const phoneModelsCollection = collection(db, 'phoneModels');
 
 const cleanUndefined = (obj: any) => {
   const out: any = {};
@@ -161,7 +162,11 @@ const fromFirestore = (doc: any): Customer => {
         repairItems,
         policyType: data.policyType || undefined,
         policyText: data.policyText || undefined,
+        customerType: data.customerType || 'repair',
         notes: data.notes || '',
+        repairLineItems: Array.isArray(data.repairLineItems)
+          ? data.repairLineItems.map((li: any) => ({ name: String(li?.name || ''), price: Number(li?.price || 0) }))
+          : undefined,
     };
 }
 
@@ -365,5 +370,83 @@ export const restoreCustomer = async (id: string): Promise<void> => {
 
 export const permanentlyDeleteCustomer = async (id: string): Promise<void> => {
   const ref = doc(db, 'customers', id);
+  await deleteDoc(ref);
+};
+
+// ===== Phone Models (admin) =====
+import type { PhoneModelDoc } from './types';
+
+const phoneModelFromSnap = (snap: any): PhoneModelDoc => {
+  const data = snap.data();
+  return {
+    id: snap.id,
+    brand: data.brand || '',
+    modelName: data.modelName || '',
+    series: data.series || undefined,
+    isActive: Boolean(data.isActive ?? true),
+    sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
+    createdAt: (data.createdAt as Timestamp)?.toDate?.() || new Date(),
+    updatedAt: (data.updatedAt as Timestamp)?.toDate?.() || new Date(),
+  };
+};
+
+export const getPhoneModels = async (): Promise<PhoneModelDoc[]> => {
+  const q = query(phoneModelsCollection, orderBy('sortOrder', 'asc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(phoneModelFromSnap);
+};
+
+export const getActivePhoneModelNames = async (): Promise<string[]> => {
+  const q = query(phoneModelsCollection, where('isActive', '==', true));
+  const snap = await getDocs(q);
+  const names = snap.docs
+    .map((d: any) => {
+      const data = d.data();
+      const brand = (data.brand || '').trim();
+      const model = ((data.modelName as string) || '').trim();
+      if (!model) return '';
+      if (brand === 'Samsung') return `Samsung ${model}`;
+      if (brand === 'Google') return `Google ${model}`;
+      return model;
+    })
+    .filter(Boolean);
+  return Array.from(new Set(names));
+};
+
+export const addPhoneModel = async (payload: {
+  brand: string;
+  modelName: string;
+  series?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}): Promise<void> => {
+  const docPayload = {
+    brand: payload.brand,
+    modelName: payload.modelName,
+    series: payload.series || null,
+    isActive: payload.isActive ?? true,
+    sortOrder: payload.sortOrder ?? 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  await addDoc(phoneModelsCollection, docPayload);
+};
+
+export const updatePhoneModel = async (
+  id: string,
+  payload: Partial<{
+    brand: string;
+    modelName: string;
+    series?: string | null;
+    isActive: boolean;
+    sortOrder: number;
+  }>
+): Promise<void> => {
+  const ref = doc(db, 'phoneModels', id);
+  await updateDoc(ref, { ...payload, updatedAt: serverTimestamp() });
+};
+
+export const deletePhoneModel = async (id: string): Promise<void> => {
+  const ref = doc(db, 'phoneModels', id);
   await deleteDoc(ref);
 };

@@ -22,9 +22,15 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
     transactionDate.getSeconds()
   ).padStart(2, "0")}`;
 
-  const totalPrice = parseFloat(customer.phonePrice);
-  const subtotal = totalPrice / 1.1;
-  const gst = totalPrice - subtotal;
+  const devices = Array.isArray(customer.devices) ? customer.devices : [];
+  const repairLines = Array.isArray(customer.repairLineItems) ? customer.repairLineItems : [];
+  const deviceTotal = devices.length > 0 ? devices.reduce((sum, d) => sum + (parseFloat(d.price) || 0), 0) : 0;
+  const repairTotal = repairLines.length > 0 ? repairLines.reduce((sum, li) => sum + (parseFloat(String(li.price)) || 0), 0) : 0;
+  const baseTotal = (devices.length > 0 || repairLines.length > 0)
+    ? deviceTotal + repairTotal
+    : parseFloat(customer.phonePrice);
+  const subtotal = baseTotal / 1.1;
+  const gst = baseTotal - subtotal;
 
   return (
     <div id="invoice-root" className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -32,7 +38,7 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
       <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
           {/* Breadcrumb + Actions */}
-          <div className="flex justify-between items-center mb-4 no-print">
+          <div className="mb-4 no-print">
             <nav aria-label="breadcrumb">
               <ol className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <li>
@@ -48,7 +54,7 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
                 </li>
               </ol>
             </nav>
-            <div className="flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2">
               <InvoiceActions customer={customer} />
             </div>
           </div>
@@ -120,27 +126,47 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b dark:border-gray-700">
-                      <td className="p-3">
-                        <p className="font-medium">
-                          {(customer.repairItems || []).length > 0
-                            ? customer.repairItems
-                                .map((id) =>
-                                  id.startsWith("custom:")
-                                    ? id.slice(7)
-                                    : getFullLabelPathForRepairItem(id)
-                                )
-                                .join("; ")
-                            : "Phone Sale"}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {customer.phoneModel}
-                          {customer.phoneStorage && ` ${customer.phoneStorage}`}
-                          {customer.phoneImei && ` (IMEI: ${customer.phoneImei})`}
-                        </p>
-                      </td>
-                      <td className="p-3 text-right font-mono">${subtotal.toFixed(2)}</td>
-                    </tr>
+                    {devices.length > 0 ? (
+                      devices.map((d, i) => (
+                        <tr key={i} className="border-b dark:border-gray-700">
+                          <td className="p-3">
+                            <p className="font-medium">Device {i + 1}: {d.model}{d.storage ? ` ${d.storage}` : ''}{d.imei ? ` (IMEI: ${d.imei})` : ''}</p>
+                          </td>
+                          <td className="p-3 text-right font-mono">${(parseFloat(d.price) || 0).toFixed(2)}</td>
+                        </tr>
+                      ))
+                    ) : repairLines.length > 0 ? (
+                      repairLines.map((li, idx) => (
+                        <tr key={idx} className="border-b dark:border-gray-700">
+                          <td className="p-3">
+                            <p className="font-medium">{li.name}</p>
+                          </td>
+                          <td className="p-3 text-right font-mono">${(parseFloat(String(li.price)) || 0).toFixed(2)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="border-b dark:border-gray-700">
+                        <td className="p-3">
+                          <p className="font-medium">
+                            {(customer.repairItems || []).length > 0
+                              ? customer.repairItems
+                                  .map((id) =>
+                                    id.startsWith("custom:")
+                                      ? id.slice(7)
+                                      : getFullLabelPathForRepairItem(id)
+                                  )
+                                  .join("; ")
+                              : "Phone Sale"}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {customer.phoneModel}
+                            {customer.phoneStorage && ` ${customer.phoneStorage}`}
+                            {customer.phoneImei && ` (IMEI: ${customer.phoneImei})`}
+                          </p>
+                        </td>
+                        <td className="p-3 text-right font-mono">${(parseFloat(customer.phonePrice) || 0).toFixed(2)}</td>
+                      </tr>
+                    )}
                   </tbody>
 
                   <tfoot>
@@ -154,8 +180,14 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
                     </tr>
                     <tr className="border-t bg-gray-50 dark:bg-gray-800/50">
                       <td className="p-3 text-right font-bold text-lg text-gray-700 dark:text-gray-200">Total</td>
-                      <td className="p-3 text-right font-bold font-mono text-lg text-primary">${totalPrice.toFixed(2)}</td>
+                      <td className="p-3 text-right font-bold font-mono text-lg text-primary">${baseTotal.toFixed(2)}</td>
                     </tr>
+                    {repairLines.length > 0 && (
+                      <tr>
+                        <td className="p-3 text-right font-semibold text-gray-600 dark:text-gray-400">Repair Total</td>
+                        <td className="p-3 text-right font-mono">${repairTotal.toFixed(2)}</td>
+                      </tr>
+                    )}
                   </tfoot>
                 </table>
               </div>
@@ -174,12 +206,19 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
 
               {/* Warranty & Policy */}
               {(() => {
-                const policy = getPolicyText(customer.policyType, customer.policyText);
-                if (!policy) return null;
+                const policyTypes = new Set<string>();
+                if (customer.policyType) policyTypes.add(customer.policyType);
+                devices.forEach((d) => { if (d.policyType) policyTypes.add(d.policyType); });
+                const list = Array.from(policyTypes);
+                if (list.length === 0) return null;
                 return (
                   <div>
                     <h3 className="font-semibold text-gray-600 dark:text-gray-300 mb-2">Warranty & Policy</h3>
-                    <p className="text-muted-foreground text-xs whitespace-pre-wrap">{policy}</p>
+                    {list.map((pt, idx) => (
+                      <p key={idx} className="text-muted-foreground text-xs whitespace-pre-wrap mb-4">
+                        {getPolicyText(pt as any, undefined)}
+                      </p>
+                    ))}
                   </div>
                 );
               })()}

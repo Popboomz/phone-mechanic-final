@@ -26,17 +26,37 @@ const FormSchema = z.object({
 
   phoneModel: z.string().min(2, 'Phone model is required.'),
   phoneImei: z.string().max(15, "IMEI cannot be more than 15 digits.").optional(),
-  phonePrice: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+  phonePrice: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
     message: "Price must be a valid positive number.",
   }),
   phoneStorage: z.string().optional(),
   // Receive date as a 'YYYY-MM-DD' string
   transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format."),
-  repairItems: z.array(z.string()).min(1, 'Please select at least one repair item.'),
-  policyType: z.enum(['standard','water','mainboard','sale','custom']).optional(),
+  repairItems: z.array(z.string()).default([]),
+  policyType: z.enum(['standard','water','mainboard','sale','sale_used','sale_new','custom']).optional(),
   policyText: z.string().optional(),
+  customerType: z.enum(['repair','sales']).default('repair'),
+  devices: z
+    .array(
+      z.object({
+        model: z.string(),
+        imei: z.string().optional(),
+        price: z.string(),
+        storage: z.string().optional(),
+        policyType: z.enum(['sale_used','sale_new']).optional(),
+      })
+    )
+    .optional(),
   warrantyPeriod: z.coerce.number().int().min(0, "Warranty period cannot be negative."),
   notes: z.string().optional(),
+  repairLineItems: z
+    .array(
+      z.object({
+        name: z.string(),
+        price: z.union([z.string(), z.number()]),
+      })
+    )
+    .optional(),
 });
 
 // Helper function to process uploaded files into base64 data URIs
@@ -59,8 +79,25 @@ const processAndValidateForm = (formData: FormData) => {
     repairItems: JSON.parse(String(formData.get('repairItems') || '[]')),
     policyType: formData.get('policyType') || undefined,
     policyText: String(formData.get('policyText') ?? ''),
+    customerType: (formData.get('customerType') as string) || 'repair',
+    devices: (() => {
+      try {
+        const s = String(formData.get('devices') ?? '');
+        return s ? JSON.parse(s) : undefined;
+      } catch {
+        return undefined;
+      }
+    })(),
     warrantyPeriod: formData.get('warrantyPeriod'),
     notes: formData.get('notes'),
+    repairLineItems: (() => {
+      try {
+        const s = String(formData.get('repairLineItems') ?? '');
+        return s ? JSON.parse(s) : undefined;
+      } catch {
+        return undefined;
+      }
+    })(),
   };
 
   const validatedFields = FormSchema.safeParse(rawFormData);
@@ -79,6 +116,9 @@ const processAndValidateForm = (formData: FormData) => {
       validatedFields.data.policyType === 'custom'
         ? (validatedFields.data.policyText ?? '')
         : '',
+    repairLineItems: (validatedFields.data.repairLineItems || [])
+      .map((li) => ({ name: li.name, price: typeof li.price === 'string' ? parseFloat(li.price) : li.price }))
+      .filter((li) => li.name && !isNaN(li.price as number)),
   };
 
   return { success: true, errors: null, data: normalized };

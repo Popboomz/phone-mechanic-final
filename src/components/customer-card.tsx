@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import {
   Card,
@@ -16,7 +17,16 @@ import { formatAUDate } from "@/lib/utils";   // ← ★ 添加这个
 
 export function CustomerCard({ customer }: { customer: Customer }) {
   return (
-    <Card className="flex flex-col overflow-hidden h-full transition-all duration-300 hover:shadow-lg border rounded-md text-white">
+    <Card
+      className="flex flex-col overflow-hidden h-full transition-all duration-300 hover:shadow-lg border rounded-md text-white cursor-pointer"
+      onClick={(e) => {
+        if (document.body.dataset.dialogOpen === '1' || document.body.dataset.blockNextNav === '1') {
+          e.stopPropagation();
+          return;
+        }
+        window.location.href = `/${customer.id}`;
+      }}
+    >
       <CardHeader className="p-2">
         <div className="flex items-start justify-between">
           <div>
@@ -45,7 +55,9 @@ export function CustomerCard({ customer }: { customer: Customer }) {
 
           {/* 右侧：价钱 + 操作 */}
           <div className="flex items-center gap-1">
-            <Badge variant="secondary" className="font-mono text-xs text-white">${customer.phonePrice}</Badge>
+            <Badge variant="secondary" className="font-mono text-xs text-white">
+              ${Array.isArray(customer.devices) && customer.devices.length > 0 ? customer.devices.reduce((sum, d) => sum + (parseFloat(d.price) || 0), 0).toFixed(2) : customer.phonePrice}
+            </Badge>
             <CustomerCardActions customer={customer} />
           </div>
         </div>

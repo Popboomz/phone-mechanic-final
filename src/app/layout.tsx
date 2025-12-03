@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PT_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import ConsoleFilter from "@/components/console-filter";
 
 const ptSans = PT_Sans({
   subsets: ["latin"],
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={`font-body antialiased ${ptSans.variable}`}>
         {children}
         <Toaster />
+        <ConsoleFilter />
       </body>
     </html>
   );

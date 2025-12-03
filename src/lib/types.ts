@@ -14,11 +14,31 @@ export type Customer = {
   transactionDate: Date;
   images: string[]; // array of base64 data URLs
   repairItems: string[]; // multiple items
-  policyType?: 'standard' | 'water' | 'mainboard' | 'sale' | 'custom';
+  policyType?: 'standard' | 'water' | 'mainboard' | 'sale' | 'sale_used' | 'sale_new' | 'custom';
   policyText?: string;
+  customerType?: 'repair' | 'sales';
+  devices?: Array<{
+    model: string;
+    imei?: string;
+    price: string;
+    storage?: string;
+    policyType?: 'sale_used' | 'sale_new';
+  }>;
   warrantyPeriod: number; // in months
   deletedAt: Date | null; // Changed from optional to nullable
   notes?: string;
+  repairLineItems?: Array<{ name: string; price: number }>;
+};
+
+export type PhoneModelDoc = {
+  id: string;
+  brand: string;
+  modelName: string;
+  series?: string;
+  isActive: boolean;
+  sortOrder?: number;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type CustomerFormValues = Omit<Customer, "id" | "images"> & {

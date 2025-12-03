@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 export function CustomerCardActions({ customer, isFooter = false }: { customer: Customer, isFooter?: boolean }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
 
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,9 +49,20 @@ export function CustomerCardActions({ customer, isFooter = false }: { customer: 
     });
   };
 
+  const handleOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (v) {
+      document.body.dataset.dialogOpen = '1';
+    } else {
+      delete document.body.dataset.dialogOpen;
+      document.body.dataset.blockNextNav = '1';
+      setTimeout(() => { delete document.body.dataset.blockNextNav; }, 200);
+    }
+  };
+
   if (isFooter) {
     return (
-        <AlertDialog>
+        <AlertDialog open={open} onOpenChange={handleOpenChange}>
             <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full" onClick={stopPropagation}>
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -65,7 +77,7 @@ export function CustomerCardActions({ customer, isFooter = false }: { customer: 
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel onClick={stopPropagation}>Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleDelete}
                   disabled={isPending}
@@ -91,7 +103,7 @@ export function CustomerCardActions({ customer, isFooter = false }: { customer: 
           <Pencil className="w-4 h-4" />
         </Button>
       </Link>
-      <AlertDialog>
+      <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogTrigger asChild>
           <Button variant="ghost" size="icon" onClick={stopPropagation}>
             <Trash2 className="w-4 h-4" />
@@ -105,7 +117,7 @@ export function CustomerCardActions({ customer, isFooter = false }: { customer: 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={stopPropagation}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isPending}

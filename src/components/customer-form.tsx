@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useTransition, useEffect } from "react";
+import { useRef, useTransition, useEffect, useState } from "react";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -37,7 +37,7 @@ import type { Customer } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { RepairItemsSelector } from "./repair-items-selector";
 import { Textarea } from "./ui/textarea";
-import { PhoneModelInput } from "./phone-model-input";
+import { getActivePhoneModelNames, getFullLabelPathForRepairItem } from "@/lib/data";
 
 // ---------------- Schema ----------------
 const FormSchema = z.object({
@@ -58,8 +58,9 @@ const FormSchema = z.object({
   transactionDate: z.date({
     required_error: "A transaction date is required.",
   }),
-  repairItems: z.array(z.string()).min(1, "Please select at least one repair item."),
+  repairItems: z.array(z.string()).default([]),
   repairCustomText: z.string().optional(),
+  customerType: z.enum(["repair","sales"]).default("repair"),
   warrantyPeriod: z.number().int().min(0, "Warranty period cannot be negative."),
   notes: z.string().optional(),
 });
@@ -80,6 +81,9 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
+  const [savedDevices, setSavedDevices] = useState<Array<{ model: string; imei?: string; price: string; storage?: string; policyType?: string }>>([]);
+  const [savedRepairs, setSavedRepairs] = useState<Array<{ name: string; price: string }>>([]);
+  const [repairPrice, setRepairPrice] = useState<string>("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -94,6 +98,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       transactionDate: customer ? new Date(customer.transactionDate) : null,
       repairItems: customer?.repairItems || [],
       repairCustomText: "",
+      customerType: customer?.customerType || "repair",
       policyType: customer?.policyType || undefined,
       policyText: customer?.policyText || "",
       warrantyPeriod: customer?.warrantyPeriod || 3,
@@ -108,9 +113,18 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
   }, [form]);
 
   useEffect(() => {
+    (async () => {
+      try {
+        const list = await getActivePhoneModelNames();
+        (form as any)._modelSuggestions = list;
+      } catch {}
+    })();
+  }, [form]);
+
+  useEffect(() => {
     const items = form.getValues("repairItems") || [];
     if (items.includes("none")) {
-      form.setValue("policyType", "sale");
+      form.setValue("policyType", "sale_used");
     }
   }, [form.watch("repairItems")]);
 
@@ -125,13 +139,15 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
     formData.set("phoneNumber", data.phoneNumber || "");
     formData.set("phoneModel", data.phoneModel);
     formData.set("phoneImei", data.phoneImei || "");
-    formData.set("phonePrice", data.phonePrice);
+    const phonePriceForSubmit = data.customerType === "sales" ? data.phonePrice : "0";
+    formData.set("phonePrice", phonePriceForSubmit);
     formData.set("phoneStorage", data.phoneStorage || "");
     formData.set(
       "transactionDate",
       formatDateToLocalYYYYMMDD(data.transactionDate)
     );
     formData.set("warrantyPeriod", data.warrantyPeriod.toString());
+    formData.set("customerType", data.customerType);
     // include custom text as a virtual item when present
     const items = [...data.repairItems];
     const customText = (data.repairCustomText || "").trim();
@@ -149,6 +165,44 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       formData.set("policyText", "");
     }
     formData.set("notes", data.notes || "");
+
+    if (data.customerType === "sales") {
+      const list = [...savedDevices];
+      if ((data.phoneModel || "").trim() && (data.phonePrice || "").trim()) {
+        list.push({
+          model: data.phoneModel.trim(),
+          imei: (data.phoneImei || "").trim() || undefined,
+          price: data.phonePrice.trim(),
+          storage: (data.phoneStorage || "").trim() || undefined,
+          policyType: form.getValues("policyType") || undefined,
+        });
+      }
+      if (list.length > 0) {
+        formData.set("devices", JSON.stringify(list));
+      }
+    }
+
+    if (data.customerType === "repair") {
+      const lines = [...savedRepairs];
+      const currentItems = [...(form.getValues("repairItems") || [])];
+      const currentCustom = (form.getValues("repairCustomText") || "").trim();
+      if (currentCustom) {
+        const cid = `custom:${currentCustom}`;
+        const idx = currentItems.indexOf("none");
+        if (idx >= 0) currentItems.splice(idx, 1);
+        if (!currentItems.includes(cid)) currentItems.push(cid);
+      }
+      const name = currentItems.length > 0
+        ? currentItems.map((id) => id.startsWith("custom:") ? id.slice(7) : getFullLabelPathForRepairItem(id)).join("; ")
+        : "Repair";
+      const priceStr = (repairPrice || data.phonePrice || "").trim();
+      if (name && priceStr) {
+        lines.push({ name, price: priceStr });
+      }
+      if (lines.length > 0) {
+        formData.set("repairLineItems", JSON.stringify(lines));
+      }
+    }
 
     startTransition(async () => {
       const action = customer
@@ -174,6 +228,38 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
   return (
     <Form {...form}>
       <form ref={formRef} action={clientAction} className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">Mode</div>
+          <div className="flex items-center gap-2">
+            <span className={cn("text-xs", form.watch("customerType") === "repair" ? "text-primary" : "opacity-60")}>Repair</span>
+            <button
+              type="button"
+              aria-label="Toggle customer type"
+              className={cn(
+                "relative w-12 h-6 rounded-full transition-colors",
+                form.watch("customerType") === "sales" ? "bg-primary" : "bg-muted"
+              )}
+              onClick={() => {
+                const next = form.watch("customerType") === "sales" ? "repair" : "sales";
+                form.setValue("customerType", next, { shouldValidate: true });
+              }}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform",
+                  form.watch("customerType") === "sales" ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+            <span className={cn("text-xs", form.watch("customerType") === "sales" ? "text-primary" : "opacity-60")}>Sales</span>
+          </div>
+        </div>
+
+        <div className={cn(
+          "rounded-md p-4",
+          form.watch("customerType") === "repair" ? "bg-accent/5" : "bg-[#121A2E]"
+        )}>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Customer Name */}
@@ -214,8 +300,13 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
               <FormItem>
                 <FormLabel>Phone Model</FormLabel>
                 <FormControl>
-                  <PhoneModelInput {...field} />
+                  <Input {...field} list="phone-models" placeholder="e.g., iPhone 15 or enter manually" />
                 </FormControl>
+                <datalist id="phone-models">
+                  {(form as any)._modelSuggestions?.map((m: string) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
                 <FormMessage />
               </FormItem>
             )}
@@ -240,58 +331,62 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
             )}
           />
 
-          {/* Storage Capacity */}
-          <FormField
-            control={form.control}
-            name="phoneStorage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Storage Capacity</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select storage size (optional)" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {storageOptions.map((size) => (
-                      <SelectItem key={size} value={size}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Storage Capacity (Sales only) */}
+          {form.watch("customerType") === "sales" && (
+            <FormField
+              control={form.control}
+              name="phoneStorage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Storage Capacity</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select storage size (optional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {storageOptions.map((size) => (
+                        <SelectItem key={size} value={size}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
-          {/* Price */}
-          <FormField
-            control={form.control}
-            name="phonePrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g., 999.99"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Price (Sales only) */}
+          {form.watch("customerType") === "sales" && (
+            <FormField
+              control={form.control}
+              name="phonePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 999.99"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* Transaction Date */}
           <FormField
             control={form.control}
             name="transactionDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="space-y-2">
                 <FormLabel>Transaction Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -299,7 +394,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full h-10 px-3 py-2 text-sm text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
                       >
@@ -388,85 +483,198 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
           />
         </div>
 
-        {/* Repair Item */}
-        <FormField
-          control={form.control}
-          name="repairItems"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Repair Items</FormLabel>
-              <FormControl>
-                <RepairItemsSelector
-                  value={field.value}
-                  onChange={(value) => field.onChange(value)}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Custom Repair Text (always available for multiple additions) */}
-        <FormField
-          control={form.control}
-          name="repairCustomText"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Custom Repair Description</FormLabel>
-              <div className="flex gap-2">
+        {/* Repair Items (Repair mode only) */}
+        {form.watch("customerType") === "repair" && (
+          <FormField
+            control={form.control}
+            name="repairItems"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Repair Items</FormLabel>
                 <FormControl>
-                  <Input placeholder="Describe the repair or sale item" {...field} />
+                  <RepairItemsSelector
+                    value={field.value}
+                    onChange={(value) => field.onChange(value)}
+                  />
                 </FormControl>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    const text = (form.getValues("repairCustomText") || "").trim();
-                    if (!text) return;
-                    const customId = `custom:${text}`;
-                    const current = form.getValues("repairItems") || [];
-                    const next = current.filter((id) => id !== "none");
-                    if (!next.includes(customId)) next.push(customId);
-                    form.setValue("repairItems", next, { shouldValidate: true });
-                    form.setValue("repairCustomText", "");
-                  }}
-                >
-                  Add
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Custom Repair Text (Repair mode only) */}
+        {form.watch("customerType") === "repair" && (
+          <FormField
+            control={form.control}
+            name="repairCustomText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Custom Repair Description</FormLabel>
+                <div className="flex gap-2">
+                  <FormControl>
+                    <Input placeholder="Describe the repair item" {...field} />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const text = (form.getValues("repairCustomText") || "").trim();
+                      if (!text) return;
+                      const customId = `custom:${text}`;
+                      const current = form.getValues("repairItems") || [];
+                      const next = current.filter((id) => id !== "none");
+                      if (!next.includes(customId)) next.push(customId);
+                      form.setValue("repairItems", next, { shouldValidate: true });
+                      form.setValue("repairCustomText", "");
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+                <FormDescription>
+                  Added text becomes a tag and appears on the invoice.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {form.watch("customerType") === "repair" && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Repair Price"
+                value={repairPrice}
+                onChange={(e)=>setRepairPrice(e.target.value)}
+                className="w-40"
+              />
+              <Button
+                type="button"
+                size="sm"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                onClick={() => {
+                  const items = form.getValues("repairItems") || [];
+                  const customText = (form.getValues("repairCustomText") || "").trim();
+                  const nextItems = [...items];
+                  if (customText) {
+                    const cid = `custom:${customText}`;
+                    const idx = nextItems.indexOf("none");
+                    if (idx >= 0) nextItems.splice(idx, 1);
+                    if (!nextItems.includes(cid)) nextItems.push(cid);
+                  }
+                  const name = nextItems.length > 0
+                    ? nextItems.map((id) => id.startsWith("custom:") ? id.slice(7) : getFullLabelPathForRepairItem(id)).join("; ")
+                    : "Repair";
+                  const price = (repairPrice || form.getValues("phonePrice") || "").trim();
+                  if (!price) return;
+                  setSavedRepairs((prev)=>[...prev, { name, price }]);
+                  // 清空与本次维修相关字段
+                  form.setValue("repairItems", [], { shouldValidate: true });
+                  form.setValue("repairCustomText", "");
+                  setRepairPrice("");
+                }}
+              >
+                Save Repair
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {savedRepairs.map((r, idx) => (
+                <Button key={idx} variant="secondary" className="h-6 px-2 py-0 text-xs">
+                  {r.name} • ${r.price}
+                  <span
+                    className="ml-2 cursor-pointer"
+                    onClick={() => setSavedRepairs((prev)=>prev.filter((_,i)=>i!==idx))}
+                  >
+                    ✖
+                  </span>
                 </Button>
-              </div>
-              <FormDescription>
-                Added text becomes a tag and appears on the invoice.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Policy Type */}
-        <FormField
-          control={form.control}
-          name="policyType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Policy Type</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a policy" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="standard">Standard Repair Policy</SelectItem>
-                  <SelectItem value="water">Water Damage Repair Policy</SelectItem>
-                  <SelectItem value="mainboard">Motherboard Repair Policy</SelectItem>
-                  <SelectItem value="sale">Device Sale Policy</SelectItem>
-                  <SelectItem value="custom">Custom Policy</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          {/* Policy Type */}
+          <FormField
+            control={form.control}
+            name="policyType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Policy Type</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a policy" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {form.watch("customerType") === "sales" ? (
+                      <>
+                        <SelectItem value="sale_used">Second-Hand Mobile Device Sales Policy</SelectItem>
+                        <SelectItem value="sale_new">Brand-New Mobile Device Sales Policy</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="standard">Standard Repair Policy</SelectItem>
+                        <SelectItem value="water">Water Damage Repair Policy</SelectItem>
+                        <SelectItem value="mainboard">Motherboard Repair Policy</SelectItem>
+                        <SelectItem value="custom">Custom Policy</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+        {/* Sales: Save current device */}
+        {form.watch("customerType") === "sales" && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                onClick={() => {
+                  const model = (form.getValues("phoneModel") || "").trim();
+                  const price = (form.getValues("phonePrice") || "").trim();
+                  if (!model || !price) return;
+                  const imei = (form.getValues("phoneImei") || "").trim();
+                  const storage = (form.getValues("phoneStorage") || "").trim();
+                  const policyType = form.getValues("policyType") || undefined;
+                  setSavedDevices((prev) => [
+                    ...prev,
+                    { model, imei: imei || undefined, price, storage: storage || undefined, policyType },
+                  ]);
+                  // clear device fields, keep name/phone
+                  form.setValue("phoneModel", "");
+                  form.setValue("phoneImei", "");
+                  form.setValue("phonePrice", "");
+                  form.setValue("phoneStorage", "");
+                }}
+              >
+                Save Device
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {savedDevices.map((d, idx) => (
+                <Button key={idx} variant="secondary" className="h-6 px-2 py-0 text-xs">
+                  {d.model}{d.imei ? ` • IMEI ${d.imei}` : ""} • ${d.price}{d.policyType ? ` • ${d.policyType}` : ""}
+                  <span
+                    className="ml-2 cursor-pointer"
+                    onClick={() => {
+                      setSavedDevices((prev) => prev.filter((_, i) => i !== idx));
+                    }}
+                  >
+                    ✖
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Custom Policy Text */}
         {form.watch("policyType") === "custom" && (
@@ -505,6 +713,8 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
             </FormItem>
           )}
         />
+
+        </div>
 
         {/* Buttons */}
         <div className="flex justify-end gap-4">

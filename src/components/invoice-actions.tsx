@@ -109,22 +109,35 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
     };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button onClick={handleDownload} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-        <Download className="mr-2 h-4 w-4" /> Download
+    <div className="flex items-center gap-1">
+      <Button
+        onClick={handleDownload}
+        size="sm"
+        className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm"
+      >
+        <Download className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Download
       </Button>
-      <Button onClick={handlePrint} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-        <Printer className="mr-2 h-4 w-4" /> Print
+      <Button
+        onClick={handlePrint}
+        size="sm"
+        className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm"
+      >
+        <Printer className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Print
       </Button>
-      <Button onClick={handleShare} className="bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSharing}>
+      <Button
+        onClick={handleShare}
+        size="sm"
+        className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 px-2 text-xs sm:h-10 sm:px-4 sm:text-sm"
+        disabled={isSharing}
+      >
         {isSharing ? (
             <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1 h-3 w-3 animate-spin sm:h-4 sm:w-4" />
                 Preparing...
             </>
         ) : (
             <>
-                <Share2 className="mr-2 h-4 w-4" />
+                <Share2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
                 Share
             </>
         )}

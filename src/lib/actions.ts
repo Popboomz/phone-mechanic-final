@@ -11,8 +11,11 @@ import {
   permanentlyDeleteCustomer,
   searchCustomers,
   getNextInvoiceNumber,
+  getCustomerById,
 } from './data';
-import type { Customer } from './types';
+import type { Customer, StoreId } from './types';
+import { db } from './firebase';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 
 // This schema is used for server-side validation.
@@ -155,9 +158,14 @@ export async function createCustomer(formData: FormData) {
   // If validation is successful, proceed to add to the database
   try {
     const invoiceNumber = await getNextInvoiceNumber(validationResult.data!.transactionDate);
+    const formStore = (formData.get('storeId') as string | null) || 'EASTWOOD';
+    const upper = (formStore || '').toUpperCase();
+    const storeId = upper === 'PARRAMATTA' ? 'PARRAMATTA' : 'EASTWOOD';
+    const staffNameVal = (formData.get('staffName') as string | null) || 'UNKNOWN';
     await addCustomer({
       ...validationResult.data!,
-      invoiceNumber,
+      storeId,
+      staffName: staffNameVal,
       images: uploadedImageUrls,
     } as Omit<Customer, 'id' | 'deletedAt'>);
   } catch (error) {
@@ -169,7 +177,27 @@ export async function createCustomer(formData: FormData) {
 
   // On success, revalidate cache and redirect
   revalidatePath('/');
-  redirect('/');
+  const rawStore = (formData.get('storeId') as string | null) || 'EASTWOOD';
+  const upperStore = rawStore.toUpperCase();
+  const redirectPath = upperStore === 'PARRAMATTA' ? '/?store=PARRAMATTA' : '/';
+  redirect(redirectPath);
+}
+
+export async function backfillCustomerStoreIds() {
+  const snap = await getDocs(collection(db, 'customers'));
+  const updates: Promise<any>[] = [];
+  snap.forEach((d) => {
+    const data = d.data() as any;
+    const raw = (data.storeId as string | undefined) || 'EASTWOOD';
+    const upper = raw.toUpperCase();
+    const storeId: StoreId = upper === 'PARRAMATTA' ? 'PARRAMATTA' : 'EASTWOOD';
+    const staffName = typeof data.staffName === 'string' ? data.staffName : '';
+    if (data.storeId !== storeId || data.staffName !== staffName) {
+      updates.push(updateDoc(doc(db, 'customers', d.id), { storeId, staffName }));
+    }
+  });
+  await Promise.all(updates);
+  return { updated: updates.length };
 }
 
 export async function updateCustomerAction(id: string, formData: FormData) {
@@ -203,10 +231,16 @@ export async function updateCustomerAction(id: string, formData: FormData) {
     };
   }
 
+  const original = await getCustomerById(id);
+  const originalStore: StoreId = (original?.storeId as StoreId) || 'EASTWOOD';
+
   try {
+    const staffNameVal = (formData.get('staffName') as string | null) || undefined;
     await updateCustomer(id, { 
       ...validationResult.data!, 
       images: allImages,
+      storeId: originalStore,
+      ...(staffNameVal ? { staffName: staffNameVal } : {}),
     });
   } catch (error) {
     return { message: 'Database Error: Failed to Update Customer.' };
@@ -215,7 +249,7 @@ export async function updateCustomerAction(id: string, formData: FormData) {
   revalidatePath('/');
   revalidatePath(`/${id}`);
   revalidatePath(`/${id}/edit`);
-  redirect(`/${id}`);
+  redirect(`/?store=${originalStore}`);
 }
 
 
@@ -254,7 +288,8 @@ export async function permanentlyDeleteCustomerAction(id: string) {
 // 👉 暂时保持只返回 id / customerName / phoneModel
 // 如果将来希望在搜索建议里也显示 phoneNumber，可以把类型里加上 'phoneNumber'
 export async function getCustomerSuggestions(
-  query: string
+  query: string,
+  storeId: StoreId
 ): Promise<
   Array<
     Pick<
@@ -268,7 +303,7 @@ export async function getCustomerSuggestions(
     return [];
   }
 
-  const customers = await searchCustomers(trimmed, 5);
+  const customers = await searchCustomers(trimmed, 5, storeId);
 
   return customers.map((c) => ({
     id: c.id,

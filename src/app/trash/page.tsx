@@ -1,13 +1,22 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getDeletedCustomers } from "@/lib/data";
+import type { StoreId } from "@/lib/types";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Home } from "lucide-react";
 import { DeletedCustomerCard } from "@/components/deleted-customer-card";
 
-export default async function TrashPage() {
-  const deletedCustomers = await getDeletedCustomers();
+export default async function TrashPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const sp = await searchParams;
+  const rawParam = (sp.store as string | undefined) || "";
+  if (!rawParam) {
+    redirect('/trash?store=EASTWOOD');
+  }
+  const upper = rawParam.toUpperCase();
+  const currentStore: StoreId = upper === "PARRAMATTA" ? "PARRAMATTA" : "EASTWOOD";
+  const deletedCustomers = await getDeletedCustomers(currentStore);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">

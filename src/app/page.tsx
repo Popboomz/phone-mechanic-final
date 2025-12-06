@@ -1,9 +1,14 @@
 import { Header } from "@/components/header";
 import { getCustomers } from "@/lib/data";
 import { CustomerDashboard } from "@/components/customer-dashboard";
+import type { StoreId } from "@/lib/types";
 
-export default async function Home() {
-  const customers = await getCustomers("");
+export default async function Home({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const sp = await searchParams;
+  const raw = (sp.store as string) || "";
+  const upper = raw.toUpperCase();
+  const currentStore: StoreId = upper === "PARRAMATTA" ? "PARRAMATTA" : "EASTWOOD";
+  const customers = await getCustomers(currentStore);
   const query = "";
 
   return (
@@ -18,7 +23,7 @@ export default async function Home() {
             Manage your customer profiles, view details, and generate invoices.
           </p>
         </div>
-        <CustomerDashboard initialCustomers={customers} query={query} />
+        <CustomerDashboard initialCustomers={customers} query={query} currentStore={currentStore} />
       </main>
     </div>
   );

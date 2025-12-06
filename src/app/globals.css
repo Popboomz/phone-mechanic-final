@@ -60,26 +60,30 @@
 /* PRINT SETTINGS (保持打印干净)            */
 /* ---------------------------------------- */
 @media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-area,
+  #printable-area * {
+    visibility: visible;
+  }
+  #printable-area {
+    position: absolute;
+    inset: 0;
+    margin: 0 auto;
+  }
   .no-print {
     display: none !important;
   }
-  .printable-area {
-    box-shadow: none !important;
-    border: none !important;
+  #receipt-root,
+  #receipt-root * {
+    visibility: visible;
   }
-  body.dark .printable-area {
-    background-color: #fff !important;
-    color: #000 !important;
-  }
-  body.dark .printable-area *,
-  body.dark .printable-area p,
-  body.dark .printable-area span,
-  body.dark .printable-area h1,
-  body.dark .printable-area h2,
-  body.dark .printable-area h3,
-  body.dark .printable-area th,
-  body.dark .printable-area td {
-    color: #000 !important;
+  #receipt-root {
+    position: absolute;
+    inset: 0;
+    margin: 0 auto;
+    width: 72mm;
   }
 }
 

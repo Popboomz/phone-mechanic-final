@@ -2,12 +2,13 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search, PlusCircle, Loader2, Calendar, Wrench, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useRef } from 'react';
 import { useDebounce } from '@/hooks/use-debounce';
-import type { Customer } from "@/lib/types";
+import type { Customer, StoreId } from "@/lib/types";
 import { getCustomerSuggestions } from "@/lib/actions";
 import { getFullLabelPathForRepairItem } from "@/lib/data";
 import { formatAUDate } from "@/lib/utils";
@@ -25,6 +26,7 @@ export function DashboardControls({ query: initialQuery }: { query: string }) {
   const debouncedQuery = useDebounce(query, 300);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -43,7 +45,9 @@ export function DashboardControls({ query: initialQuery }: { query: string }) {
     if (debouncedQuery.length > 1) {
       setIsLoading(true);
       setShowSuggestions(true);
-      getCustomerSuggestions(debouncedQuery)
+      const raw = (searchParams.get("store") || "").toUpperCase();
+      const currentStore: StoreId = raw === "PARRAMATTA" ? "PARRAMATTA" : "EASTWOOD";
+      getCustomerSuggestions(debouncedQuery, currentStore)
         .then(results => {
           setSuggestions(results);
         })
@@ -54,7 +58,7 @@ export function DashboardControls({ query: initialQuery }: { query: string }) {
       setSuggestions([]);
       setShowSuggestions(false);
     }
-  }, [debouncedQuery]);
+  }, [debouncedQuery, searchParams]);
   
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -142,12 +146,19 @@ export function DashboardControls({ query: initialQuery }: { query: string }) {
           </Card>
         )}
       </div>
-      <Link href="/new" className="flex-shrink-0">
-        <Button className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-          <PlusCircle className="mr-2 h-5 w-5" />
-          Add New Customer
-        </Button>
-      </Link>
+      {(() => {
+        const raw = (searchParams.get("store") || "").toUpperCase();
+        const currentStore = raw === "PARRAMATTA" ? "PARRAMATTA" : "EASTWOOD";
+        const newHref = currentStore === "EASTWOOD" ? "/new" : `/new?store=${currentStore}`;
+        return (
+          <Link href={newHref} className="flex-shrink-0">
+          <Button className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+            <PlusCircle className="mr-2 h-5 w-5" />
+            Add New Customer
+          </Button>
+          </Link>
+        );
+      })()}
     </div>
   );
 }

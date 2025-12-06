@@ -91,6 +91,10 @@ export function CustomerCard({ customer }: { customer: Customer }) {
               <Calendar className="w-3 h-3 mr-1 text-primary" />
               {formatAUDate(customer.transactionDate)}
             </span>
+            <span className="opacity-70">·</span>
+            <span className="flex items-center">
+              Staff: {customer.staffName || '-'}
+            </span>
           </div>
         </Link>
       </CardContent>

@@ -1,8 +1,14 @@
 import { CustomerForm } from "@/components/customer-form";
 import { Header } from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import type { StoreId } from "@/lib/types";
 
-export default function NewCustomerPage() {
+export default async function NewCustomerPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const sp = await searchParams;
+  const raw = (sp.store as string) || "";
+  const upper = raw.toUpperCase();
+  const currentStore: StoreId = upper === "PARRAMATTA" ? "PARRAMATTA" : "EASTWOOD";
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -14,7 +20,7 @@ export default function NewCustomerPage() {
               <CardDescription>Fill in the details below to add a new customer to your records.</CardDescription>
             </CardHeader>
             <CardContent>
-                <CustomerForm />
+                <CustomerForm currentStoreId={currentStore} />
             </CardContent>
           </Card>
         </div>

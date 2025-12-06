@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, Calendar, Hash, User, Trash2, Undo, AlertTriangle } from "lucide-react";
 import type { Customer } from "@/lib/types";
 import { restoreCustomerAction, permanentlyDeleteCustomerAction } from "@/lib/actions";
+import { formatAUDate } from "@/lib/utils";
 
 export function DeletedCustomerCard({ customer }: { customer: Customer }) {
   const restoreCustomerWithId = restoreCustomerAction.bind(null, customer.id);
@@ -44,7 +45,7 @@ export function DeletedCustomerCard({ customer }: { customer: Customer }) {
         <div className="text-sm text-muted-foreground space-y-2">
             <div className="flex items-center text-destructive">
                 <AlertTriangle className="w-4 h-4 mr-2" />
-                Deleted on: {customer.deletedAt ? new Date(customer.deletedAt).toLocaleDateString() : 'N/A'}
+                Deleted on: {customer.deletedAt ? formatAUDate(customer.deletedAt) : 'N/A'}
             </div>
             <div className="flex items-center">
                 <Hash className="w-4 h-4 mr-2 text-primary" />
@@ -52,7 +53,11 @@ export function DeletedCustomerCard({ customer }: { customer: Customer }) {
             </div>
             <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-2 text-primary" />
-                <span>{new Date(customer.transactionDate).toLocaleDateString()}</span>
+                <span>{formatAUDate(customer.transactionDate)}</span>
+            </div>
+            <div className="flex items-center">
+                <span className="w-4 h-4 mr-2" />
+                <span>Staff: {customer.staffName || '-'}</span>
             </div>
         </div>
         <Badge variant="secondary" className="font-mono text-base">

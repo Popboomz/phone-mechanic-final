@@ -33,11 +33,12 @@ import { CalendarIcon, Minus, Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { createCustomer, updateCustomerAction } from "@/lib/actions";
-import type { Customer } from "@/lib/types";
+import type { Customer, StoreId } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { RepairItemsSelector } from "./repair-items-selector";
 import { Textarea } from "./ui/textarea";
 import { getActivePhoneModelNames, getFullLabelPathForRepairItem } from "@/lib/data";
+import { useStaff } from "@/context/staff-context";
 
 // ---------------- Schema ----------------
 const FormSchema = z.object({
@@ -85,8 +86,9 @@ const formatDateToLocalYYYYMMDD = (date: Date) => {
 const storageOptions = ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB"];
 
 // ---------------- Component ----------------
-export function CustomerForm({ customer }: { customer?: Customer }) {
+export function CustomerForm({ customer, currentStoreId = "EASTWOOD" }: { customer?: Customer; currentStoreId?: StoreId }) {
   const { toast } = useToast();
+  const { staffName } = useStaff();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [savedDevices, setSavedDevices] = useState<Array<{ model: string; imei?: string; price: string; storage?: string; policyType?: string }>>([]);
@@ -173,6 +175,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       formData.set("policyText", "");
     }
     formData.set("notes", data.notes || "");
+    formData.set("staffName", staffName || "");
 
     if (data.customerType === "sales") {
       const list = [...savedDevices];
@@ -237,6 +240,8 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
   return (
     <Form {...form}>
       <form ref={formRef} action={clientAction} className="space-y-8">
+        <input type="hidden" name="storeId" value={currentStoreId} />
+        <input type="hidden" name="staffName" value={staffName || ""} />
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">Mode</div>
           <div className="flex items-center gap-2">

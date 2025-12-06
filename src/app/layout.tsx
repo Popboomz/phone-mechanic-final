@@ -4,6 +4,8 @@ import { PT_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import ConsoleFilter from "@/components/console-filter";
+import { StaffProvider } from "@/context/staff-context";
+import { StaffGate } from "@/components/staff-gate";
 
 const ptSans = PT_Sans({
   subsets: ["latin"],
@@ -24,7 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-body antialiased ${ptSans.variable}`}>
-        {children}
+        <StaffProvider>
+          <StaffGate>
+            {children}
+          </StaffGate>
+        </StaffProvider>
         <Toaster />
         <ConsoleFilter />
       </body>

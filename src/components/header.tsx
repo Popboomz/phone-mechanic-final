@@ -1,21 +1,40 @@
+"use client";
+
 import Link from 'next/link';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu, PencilRuler, Home, Trash2 } from 'lucide-react';
 import { getDeletedCustomers } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { SydneyTime } from './sydney-time';
 import { Separator } from './ui/separator';
+// StoreSwitcher removed
+import { useEffect, useState } from 'react';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { useStaff } from '@/context/staff-context';
+import type { StoreId } from '@/lib/types';
 
-export async function Header() {
-  const deletedCustomers = await getDeletedCustomers();
-  const trashCount = deletedCustomers.length;
+export function Header() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { staffName, storeId, logout } = useStaff();
+  const isTrashPage = pathname === '/trash';
+  const [trashCount, setTrashCount] = useState(0);
+  const currentStore: StoreId = storeId === 'PARRAMATTA' ? 'PARRAMATTA' : 'EASTWOOD';
+
+  useEffect(() => {
+    let mounted = true;
+    getDeletedCustomers(currentStore)
+      .then((list) => { if (mounted) setTrashCount(list.length || 0); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [currentStore]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
         <div className="flex items-center">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
+          <Link href={`/?store=${currentStore}`} className="mr-6 flex items-center space-x-2">
             <PencilRuler className="h-6 w-6 text-accent" />
             <span className="font-bold sm:inline-block font-headline text-lg uppercase">
               PHONE MECHANIC
@@ -23,23 +42,31 @@ export async function Header() {
           </Link>
         </div>
         
-        <div className="hidden md:flex flex-1 items-center justify-center">
-            <SydneyTime />
+        <div className="flex flex-1 items-center justify-center">
+            <span className="font-bold font-headline text-lg uppercase tracking-wide text-accent">
+              {currentStore}
+            </span>
         </div>
 
         <div className="flex items-center justify-end space-x-2">
           <nav className="hidden md:flex items-center space-x-4">
-            <Link href="/trash">
-              <Button variant="outline" className="relative font-bold">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Trash
-                {trashCount > 0 && (
-                   <Badge variant="destructive" className="absolute -right-2 -top-2 px-2">
-                    {trashCount}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
+            {!isTrashPage && (
+              <Link href={`/trash?store=${currentStore}`}>
+                <Button variant="outline" className="relative font-bold">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Trash
+                  {trashCount > 0 && (
+                    <Badge variant="destructive" className="absolute -right-2 -top-2 px-2">
+                      {trashCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            )}
+            <span className="text-sm text-white">Staff: {staffName || '-'} </span>
+            <Button variant="outline" onClick={() => { logout(); router.push('/staff-login'); }}>
+              Logout
+            </Button>
           </nav>
           <Sheet>
             <SheetTrigger asChild>
@@ -51,7 +78,7 @@ export async function Header() {
             <SheetContent side="right">
                 <SheetHeader className="text-left mb-8">
                     <SheetTitle className="sr-only">Navigation</SheetTitle>
-                    <Link href="/" className="flex items-center space-x-2">
+                    <Link href={`/?store=${currentStore}`} className="flex items-center space-x-2">
                         <PencilRuler className="h-6 w-6 text-accent" />
                         <span className="font-bold font-headline text-lg uppercase">
                         PHONE MECHANIC
@@ -59,13 +86,11 @@ export async function Header() {
                     </Link>
                 </SheetHeader>
 
-                <div className="mb-8 flex justify-center">
-                    <SydneyTime />
-                </div>
+                
 
               <nav className="grid gap-4 text-lg font-medium">
                  <Link
-                  href="/"
+                  href={`/?store=${currentStore}`}
                   className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <Home className="h-5 w-5" />
@@ -73,7 +98,7 @@ export async function Header() {
                 </Link>
                 <Separator />
                 <Link
-                  href="/trash"
+                  href={`/trash?store=${currentStore}`}
                   className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground font-bold"
                 >
                   <Trash2 className="h-5 w-5" />

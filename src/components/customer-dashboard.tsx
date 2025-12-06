@@ -18,9 +18,11 @@ import { Button } from '@/components/ui/button';
 export function CustomerDashboard({
   initialCustomers,
   query,
+  currentStore,
 }: {
   initialCustomers: Customer[];
   query: string;
+  currentStore?: 'EASTWOOD' | 'PARRAMATTA';
 }) {
   const customers = initialCustomers;
 
@@ -128,13 +130,16 @@ export function CustomerDashboard({
                 ? `Your search for "${query}" did not match any customers.`
                 : "It looks like you haven't added any customers yet. Get started by creating a new customer profile."}
             </p>
-            {!query && (
-              <Link href="/new">
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add First Customer
-                </Button>
-              </Link>
-            )}
+            {!query && (() => {
+              const href = (currentStore || 'EASTWOOD') === 'EASTWOOD' ? '/new' : `/new?store=${currentStore}`;
+              return (
+                <Link href={href}>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add First Customer
+                  </Button>
+                </Link>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

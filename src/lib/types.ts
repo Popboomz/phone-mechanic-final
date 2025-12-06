@@ -29,7 +29,15 @@ export type Customer = {
   notes?: string;
   repairLineItems?: Array<{ name: string; price: number }>;
   invoiceNumber?: string;
+  storeId?: 'EASTWOOD' | 'PARRAMATTA';
+  staffName?: string;
 };
+
+export type StoreId = 'EASTWOOD' | 'PARRAMATTA';
+export const STORES: Record<StoreId, { name: string }> = {
+  EASTWOOD: { name: 'PHONE MECHANIC EASTWOOD' },
+  PARRAMATTA: { name: 'PHONE MECHANIC PARRAMATTA' },
+} as const;
 
 export type PhoneModelDoc = {
   id: string;

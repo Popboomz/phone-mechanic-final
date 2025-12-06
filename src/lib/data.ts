@@ -1,5 +1,5 @@
 
-import type { Customer } from "./types";
+import type { Customer, StoreId } from "./types";
 import { db } from './firebase';
 import {
   collection,
@@ -171,20 +171,25 @@ const fromFirestore = (doc: any): Customer => {
           ? data.repairLineItems.map((li: any) => ({ name: String(li?.name || ''), price: Number(li?.price || 0) }))
           : undefined,
         invoiceNumber: data.invoiceNumber || undefined,
+        storeId: (data.storeId as any) || 'EASTWOOD',
+        staffName: data.staffName || '',
     };
 }
 
-const getAllCustomers = async (): Promise<Customer[]> => {
-    const q = query(customersCollection, where('deletedAt', '==', null));
+const getAllCustomersByStore = async (storeId: StoreId): Promise<Customer[]> => {
+    const q = query(customersCollection, where('storeId', '==', storeId));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(fromFirestore);
+    return querySnapshot.docs
+      .map(fromFirestore)
+      .filter((c) => c.deletedAt === null);
 }
 
 export const searchCustomers = async (
   searchQuery: string,
-  limitCount?: number
+  limitCount: number | undefined,
+  storeId: StoreId
 ): Promise<Customer[]> => {
-  const allCustomers = await getAllCustomers();
+  const allCustomers = await getAllCustomersByStore(storeId);
 
   // 没有搜索词：按日期倒序返回
   if (!searchQuery) {
@@ -317,11 +322,11 @@ export const searchCustomers = async (
   return scoredCustomers.map((item) => item.customer);
 };
 
-export const getCustomers = async (searchQuery?: string): Promise<Customer[]> => {
+export const getCustomers = async (storeId: StoreId, searchQuery?: string): Promise<Customer[]> => {
   if (searchQuery && searchQuery.trim().length > 0) {
-    return searchCustomers(searchQuery.trim());
+    return searchCustomers(searchQuery.trim(), undefined, storeId);
   }
-  const customers = await getAllCustomers();
+  const customers = await getAllCustomersByStore(storeId);
   return customers.sort((a, b) => b.transactionDate.getTime() - a.transactionDate.getTime());
 };
 
@@ -332,11 +337,15 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
   return fromFirestore(snap);
 };
 
-export const getDeletedCustomers = async (): Promise<Customer[]> => {
-  const q = query(customersCollection, where('deletedAt', '!=', null));
+export const getDeletedCustomers = async (storeId: StoreId): Promise<Customer[]> => {
+  const q = query(customersCollection, where('storeId', '==', storeId));
   const querySnapshot = await getDocs(q);
-  const list = querySnapshot.docs.map(fromFirestore);
-  return list.sort((a, b) => b.transactionDate.getTime() - a.transactionDate.getTime());
+  const list = querySnapshot.docs.map(fromFirestore).filter((c) => c.deletedAt !== null);
+  return list.sort((a, b) => {
+    const aTime = (a.deletedAt ? a.deletedAt.getTime() : 0);
+    const bTime = (b.deletedAt ? b.deletedAt.getTime() : 0);
+    return bTime - aTime;
+  });
 };
 
 export const addCustomer = async (
@@ -346,6 +355,8 @@ export const addCustomer = async (
     ...data,
     transactionDate: Timestamp.fromDate(data.transactionDate),
     deletedAt: null,
+    storeId: (data as any).storeId ?? 'EASTWOOD',
+    staffName: (data as any).staffName ?? 'Steven',
   };
   await addDoc(customersCollection, cleanUndefined(payload));
 };
@@ -359,6 +370,8 @@ export const updateCustomer = async (
   if (payload.transactionDate instanceof Date) {
     payload.transactionDate = Timestamp.fromDate(payload.transactionDate);
   }
+  if (payload.storeId === undefined) payload.storeId = 'EASTWOOD';
+  if (payload.staffName === undefined) payload.staffName = 'Steven';
   await updateDoc(ref, cleanUndefined(payload));
 };
 

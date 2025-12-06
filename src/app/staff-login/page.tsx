@@ -75,9 +75,9 @@ export default function StaffLoginPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Pin</label>
-            <Input
-              placeholder="Input allowed PIN"
+          <label className="text-sm font-medium">Password</label>
+          <Input
+              placeholder="Input allowed Passwprd"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />

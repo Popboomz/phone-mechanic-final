@@ -116,6 +116,15 @@ export function Header() {
                   )}
                 </Link>
               </nav>
+              <Separator className="my-6" />
+              <div className="mt-2 grid gap-3">
+                <span suppressHydrationWarning className="text-sm text-muted-foreground">
+                  Staff: {isHydrated ? (staffName || '-') : '-'}
+                </span>
+                <Button variant="outline" onClick={() => { logout(); router.push('/staff-login'); }}>
+                  Logout
+                </Button>
+              </div>
             </SheetContent>
           </Sheet>
         </div>

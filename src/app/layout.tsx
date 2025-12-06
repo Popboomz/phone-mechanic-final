@@ -1,5 +1,6 @@
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PT_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -27,9 +28,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-body antialiased ${ptSans.variable}`}>
         <StaffProvider>
-          <StaffGate>
-            {children}
-          </StaffGate>
+          <Suspense fallback={null}>
+            <StaffGate>
+              {children}
+            </StaffGate>
+          </Suspense>
         </StaffProvider>
         <Toaster />
         <ConsoleFilter />

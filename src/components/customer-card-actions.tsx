@@ -19,12 +19,15 @@ import { Pencil, Trash2, Loader2 } from "lucide-react";
 import type { Customer } from "@/lib/types";
 import { deleteCustomerAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
+import { useStaff } from "@/context/staff-context";
 
 
 export function CustomerCardActions({ customer, isFooter = false }: { customer: Customer, isFooter?: boolean }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const { storeId } = useStaff();
+  const currentStore = storeId === "PARRAMATTA" ? "PARRAMATTA" : "EASTWOOD";
 
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,7 +101,7 @@ export function CustomerCardActions({ customer, isFooter = false }: { customer: 
 
   return (
     <div className="flex items-center gap-1">
-      <Link href={`/${customer.id}/edit`}>
+      <Link href={`/${customer.id}/edit?store=${currentStore}`}>
         <Button variant="ghost" size="icon" onClick={stopPropagation}>
           <Pencil className="w-4 h-4" />
         </Button>

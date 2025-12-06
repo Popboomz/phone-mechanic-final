@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getCustomerById } from "@/lib/data";
 import { CustomerForm } from "@/components/customer-form";
 import { Header } from "@/components/header";
+import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default async function EditCustomerPage({
@@ -18,7 +19,9 @@ export default async function EditCustomerPage({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header />
+      <Suspense fallback={null}>
+        <Header />
+      </Suspense>
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="max-w-2xl mx-auto">
           <Card>

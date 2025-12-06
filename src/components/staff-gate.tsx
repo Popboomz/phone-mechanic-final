@@ -20,7 +20,5 @@ export function StaffGate({ children }: { children: React.ReactNode }) {
     }
   }, [staffName, storeId, isHydrated, pathname, searchParams, router]);
 
-  if (!isHydrated) return null;
-
   return <>{children}</>;
 }

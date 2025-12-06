@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStaff } from "@/context/staff-context";
 import { Button } from "@/components/ui/button";
@@ -52,40 +52,42 @@ export default function StaffLoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-background">
-      <h1 className={`${interHeadline.className} text-5xl font-bold uppercase mb-8 text-center`}>
-        <span className="block">PHONE</span>
-        <span className="block">MECHANIC</span>
-      </h1>
-      <div className="w-full max-w-sm space-y-6 p-6 border rounded-md shadow bg-card">
-        <h1 className="text-xl font-bold text-center mb-2">Staff Login</h1>
+    <Suspense fallback={null}>
+      <div className="flex flex-col items-center justify-center h-screen bg-background">
+        <h1 className={`${interHeadline.className} text-5xl font-bold uppercase mb-8 text-center`}>
+          <span className="block">PHONE</span>
+          <span className="block">MECHANIC</span>
+        </h1>
+        <div className="w-full max-w-sm space-y-6 p-6 border rounded-md shadow bg-card">
+          <h1 className="text-xl font-bold text-center mb-2">Staff Login</h1>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Store</label>
+            <Select value={store} onValueChange={(v) => setStore(v as StoreId)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select store" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="EASTWOOD">PHONE MECHANIC EASTWOOD</SelectItem>
+                <SelectItem value="PARRAMATTA">PHONE MECHANIC PARRAMATTA</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Store</label>
-          <Select value={store} onValueChange={(v) => setStore(v as StoreId)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select store" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="EASTWOOD">PHONE MECHANIC EASTWOOD</SelectItem>
-              <SelectItem value="PARRAMATTA">PHONE MECHANIC PARRAMATTA</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Pin</label>
+            <Input
+              placeholder="Input allowed PIN"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          <Button className="w-full" onClick={handleLogin}>
+            Continue
+          </Button>
         </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Pin</label>
-          <Input
-            placeholder="Input allowed PIN"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-
-        <Button className="w-full" onClick={handleLogin}>
-          Continue
-        </Button>
       </div>
-    </div>
+    </Suspense>
   );
 }

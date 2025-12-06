@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DashboardLinkFromSession } from "@/components/dashboard-link-session";
+import { Suspense } from "react";
 import { getCustomerById, getFullLabelPathForRepairItem } from "@/lib/data";
 import { Header } from "@/components/header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -35,7 +36,9 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
   return (
     <div id="invoice-root" className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="no-print">
-        <Header />
+        <Suspense fallback={null}>
+          <Header />
+        </Suspense>
       </div>
       <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -44,7 +47,9 @@ export default async function TaxInvoicePage({ params }: { params: { id: string 
             <nav aria-label="breadcrumb">
               <ol className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <li>
-                  <DashboardLinkFromSession className="hover:text-primary transition-colors flex items-center gap-2" />
+                  <Suspense fallback={null}>
+                    <DashboardLinkFromSession className="hover:text-primary transition-colors flex items-center gap-2" />
+                  </Suspense>
                 </li>
                 <li>
                   <span className="text-muted-foreground">/</span>

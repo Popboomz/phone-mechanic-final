@@ -17,10 +17,14 @@ export function Header() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { staffName, storeId, logout } = useStaff();
+  const { staffName, storeId, isHydrated, logout } = useStaff();
   const isTrashPage = pathname === '/trash';
   const [trashCount, setTrashCount] = useState(0);
-  const currentStore: StoreId = storeId === 'PARRAMATTA' ? 'PARRAMATTA' : 'EASTWOOD';
+  const urlStoreRaw = (searchParams.get('store') || '').toUpperCase();
+  const initialStore: StoreId = urlStoreRaw === 'PARRAMATTA' ? 'PARRAMATTA' : 'EASTWOOD';
+  const currentStore: StoreId = isHydrated
+    ? (storeId === 'PARRAMATTA' ? 'PARRAMATTA' : 'EASTWOOD')
+    : initialStore;
 
   useEffect(() => {
     let mounted = true;
@@ -63,7 +67,9 @@ export function Header() {
                 </Button>
               </Link>
             )}
-            <span className="text-sm text-white">Staff: {staffName || '-'} </span>
+            <span suppressHydrationWarning className="text-sm text-white">
+              Staff: {isHydrated ? (staffName || '-') : '-'}
+            </span>
             <Button variant="outline" onClick={() => { logout(); router.push('/staff-login'); }}>
               Logout
             </Button>

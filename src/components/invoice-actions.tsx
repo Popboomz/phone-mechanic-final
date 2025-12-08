@@ -28,19 +28,14 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
 
         try {
             const canvas = await html2canvas(invoiceElement, {
-                scale: 2,
+                scale: 1.5,
                 useCORS: true,
                 backgroundColor: '#ffffff',
             });
             
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.72);
             
-            // A4 size in points (width, height)
-            const pdf = new jsPDF({
-                orientation: 'p',
-                unit: 'px',
-                format: 'a4',
-            });
+            const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: 'a4' });
 
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -62,7 +57,7 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
             const x = (pdfWidth - finalWidth) / 2;
             const y = (pdfHeight - finalHeight) / 2;
 
-            pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+            pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
             const pdfBlob = pdf.output('blob');
             const pdfFile = new File([pdfBlob], `Invoice-${customer.customerName}.pdf`, { type: 'application/pdf' });
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -90,8 +85,8 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
     const handleDownload = async () => {
         const invoiceElement = document.getElementById('printable-area');
         if (!invoiceElement) return;
-        const canvas = await html2canvas(invoiceElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        const imgData = canvas.toDataURL('image/png');
+        const canvas = await html2canvas(invoiceElement, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/jpeg', 0.72);
         const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: 'a4' });
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -100,7 +95,7 @@ export function InvoiceActions({ customer }: { customer: Customer }) {
         if (ar > pdfWidth / pdfHeight) { w = pdfWidth; h = pdfWidth / ar; } else { h = pdfHeight; w = pdfHeight * ar; }
         const x = (pdfWidth - w) / 2;
         const y = (pdfHeight - h) / 2;
-        pdf.addImage(imgData, 'PNG', x, y, w, h);
+        pdf.addImage(imgData, 'JPEG', x, y, w, h);
         pdf.save(`Invoice-${customer.customerName}.pdf`);
     };
 

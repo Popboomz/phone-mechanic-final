@@ -21,8 +21,8 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedName = sessionStorage.getItem("staffName");
-    const storedStore = sessionStorage.getItem("storeId") as StoreId | null;
+    const storedName = sessionStorage.getItem("staffName") ?? localStorage.getItem("staffName");
+    const storedStore = (sessionStorage.getItem("storeId") ?? localStorage.getItem("storeId")) as StoreId | null;
 
     if (storedName) setStaffNameState(storedName);
     if (storedStore === "EASTWOOD" || storedStore === "PARRAMATTA") {
@@ -35,6 +35,8 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
   const setSession = (name: string, store: StoreId) => {
     sessionStorage.setItem("staffName", name);
     sessionStorage.setItem("storeId", store);
+    localStorage.setItem("staffName", name);
+    localStorage.setItem("storeId", store);
     setStaffNameState(name);
     setStoreIdState(store);
     setIsHydrated(true);
@@ -43,6 +45,8 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     sessionStorage.removeItem("staffName");
     sessionStorage.removeItem("storeId");
+    localStorage.removeItem("staffName");
+    localStorage.removeItem("storeId");
     setStaffNameState(null);
     setStoreIdState(null);
     setIsHydrated(true);
